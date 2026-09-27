@@ -4,14 +4,13 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const DEFAULT_MODEL = process.env.DEFAULT_MODEL || 'openai/gpt-4o-mini';
 
-// Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// OpenRouter API Proxy
 app.post('/api/chat', async (req, res) => {
-  const { messages, model } = req.body;
+  const { messages } = req.body;
 
   if (!process.env.OPENROUTER_API_KEY) {
     return res.status(500).json({ error: 'API anahtarı yapılandırılmamış' });
@@ -27,7 +26,7 @@ app.post('/api/chat', async (req, res) => {
         'X-Title': 'ChatixAI'
       },
       body: JSON.stringify({
-        model: model || 'openai/gpt-4o-mini',
+        model: DEFAULT_MODEL,
         messages: messages,
         stream: true
       })
@@ -38,7 +37,6 @@ app.post('/api/chat', async (req, res) => {
       return res.status(response.status).json({ error: error });
     }
 
-    // Streaming desteği
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -61,20 +59,16 @@ app.post('/api/chat', async (req, res) => {
             res.end();
             return;
           }
-
           try {
             const parsed = JSON.parse(data);
             const content = parsed.choices[0]?.delta?.content || '';
             if (content) {
               res.write(`data: ${JSON.stringify({ content })}\n\n`);
             }
-          } catch (e) {
-            // JSON parse hatası, devam et
-          }
+          } catch (e) {}
         }
       }
     }
-
     res.end();
   } catch (error) {
     console.error('API Hatası:', error);
@@ -82,7 +76,6 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// Tüm diğer istekleri index.html'e yönlendir
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
