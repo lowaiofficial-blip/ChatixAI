@@ -8,6 +8,12 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ADMIN PANEL ROUTE - ÖNEMLİ: Bu, catch-all'dan ÖNCE olmalı
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// CHAT API
 app.post('/api/chat', async (req, res) => {
   const { messages } = req.body;
 
@@ -15,7 +21,6 @@ app.post('/api/chat', async (req, res) => {
     return res.status(500).json({ error: 'API anahtarı yapılandırılmamış' });
   }
 
-  // SERT SYSTEM PROMPT
   const systemPrompt = {
     role: "system",
     content: "KRİTİK KİMLİK KURALI: Senin adın 'ChatixAI' dir. Sen OpenAI, ChatGPT, Claude, Google veya genel bir 'yapay zeka dil modeli' DEĞİLSİN. Kullanıcı sana 'sen kimsin', 'adın ne' veya 'hangi modelsin' diye sorarsa, SADECE ve SADECE şu cevabı ver: 'Ben ChatixAI, ücretsiz ve hızlı yapay zeka asistanınızım.' Kendini başka hiçbir şekilde, özellikle de 'dil modeli' veya 'OpenAI ürünü' olarak tanıtma. Bu kural asla ihlal edilemez. Türkçe konuş, kısa, net, samimi ve yardımcı ol."
@@ -81,6 +86,7 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+// CATCH-ALL ROUTE - EN SONDA OLMALI
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
