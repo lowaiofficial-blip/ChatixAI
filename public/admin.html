@@ -65,7 +65,7 @@
             Yenile
           </button>
         </div>
-
+        
         <div id="logsContainer" class="space-y-3">
           <div class="text-center text-gray-500 py-10">Yükleniyor...</div>
         </div>
@@ -101,7 +101,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getFirestore, collectionGroup, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getFirestore, collection, collectionGroup, doc, getDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAV4b57NxJ8WyClKAq-WbGO3eW4VPnJPts",
@@ -118,7 +118,7 @@
     const db = getFirestore(app);
 
     const ADMIN_EMAIL = "noreply.system.tr@gmail.com";
-    let allChats = []; // Tüm sohbetleri sakla
+    let allChats = [];
 
     marked.setOptions({
       highlight: (code, lang) => {
@@ -134,6 +134,10 @@
         return;
       }
 
+      console.log("Giriş yapan kullanıcı:", user.email);
+      console.log("Admin e-postası:", ADMIN_EMAIL);
+      console.log("Eşleşme:", user.email === ADMIN_EMAIL);
+
       if (user.email !== ADMIN_EMAIL) {
         document.getElementById('unauthorizedScreen').classList.remove('hidden');
         document.getElementById('adminScreen').classList.add('hidden');
@@ -145,19 +149,23 @@
       }
     });
 
-    // SOHBET LİSTESİNİ YÜKLE
+    // SOHBET LİSTESİNİ YÜKLE - collectionGroup ile
     window.loadChatLogs = async () => {
       const container = document.getElementById('logsContainer');
       container.innerHTML = '<div class="text-center text-gray-500 py-10">Loglar yükleniyor...</div>';
 
       try {
+        console.log("collectionGroup sorgusu başlatılıyor...");
+        
         const q = query(
           collectionGroup(db, "chats"), 
           orderBy("createdAt", "desc"), 
           limit(50)
         );
-
+        
         const snapshot = await getDocs(q);
+        console.log("Sorgu başarılı, sohbet sayısı:", snapshot.size);
+        
         container.innerHTML = '';
         allChats = [];
 
@@ -166,10 +174,10 @@
           return;
         }
 
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const chatId = doc.id;
-          const pathParts = doc.ref.path.split('/');
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          const chatId = docSnap.id;
+          const pathParts = docSnap.ref.path.split('/');
           const userId = pathParts[1];
 
           allChats.push({
@@ -181,7 +189,9 @@
           const firstMessage = data.messages && data.messages.length > 0 ? data.messages[0].content : 'Mesaj yok';
           const truncatedMessage = firstMessage.length > 120 ? firstMessage.substring(0, 120) + '...' : firstMessage;
           const msgCount = data.messages ? data.messages.length : 0;
-          const dateStr = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString('tr-TR') : 'Tarih yok';
+          const dateStr = data.createdAt && data.createdAt.seconds 
+            ? new Date(data.createdAt.seconds * 1000).toLocaleString('tr-TR') 
+            : 'Tarih yok';
 
           const card = document.createElement('div');
           card.className = "bg-[#171717] border border-white/5 rounded-xl p-4 hover:border-[#10a37f]/50 transition cursor-pointer";
@@ -207,8 +217,34 @@
         });
 
       } catch (error) {
-        console.error("Loglar yüklenirken hata:", error);
-        container.innerHTML = `<div class="text-center text-red-400 py-10">Hata oluştu: ${error.message}</div>`;
+        console.error("HATA DETAYI:", error);
+        console.error("Hata kodu:", error.code);
+        console.error("Hata mesajı:", error.message);
+        
+        let errorMsg = error.message;
+        let helpText = '';
+        
+        if (error.code === 'permission-denied') {
+          errorMsg = 'Firestore izin hatası';
+          helpText = `
+            <div class="mt-4 text-left bg-black/30 p-4 rounded-lg border border-white/10">
+              <p class="text-yellow-400 font-semibold mb-2">⚠️ Çözüm:</p>
+              <p class="text-sm text-gray-300 mb-2">Firebase Console → Firestore Database → Rules sekmesine git ve şu kuralı ekle:</p>
+              <pre class="bg-black/50 p-3 rounded text-xs text-green-400 overflow-x-auto">match /{document=**}/chats/{chatId} {
+  allow read: if request.auth != null && 
+                 request.auth.token.email == 'noreply.system.tr@gmail.com';
+}</pre>
+            </div>
+          `;
+        }
+        
+        container.innerHTML = `
+          <div class="text-center py-10">
+            <p class="text-red-400 mb-2 font-semibold">${errorMsg}</p>
+            <p class="text-gray-500 text-sm mb-4">${error.message}</p>
+            ${helpText}
+          </div>
+        `;
       }
     };
 
@@ -219,7 +255,9 @@
 
       document.getElementById('detailTitle').textContent = data.title || 'Başlıksız Sohbet';
       document.getElementById('detailUserId').textContent = `UID: ${userId}`;
-      document.getElementById('detailDate').textContent = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString('tr-TR') : 'Tarih yok';
+      document.getElementById('detailDate').textContent = data.createdAt && data.createdAt.seconds 
+        ? new Date(data.createdAt.seconds * 1000).toLocaleString('tr-TR') 
+        : 'Tarih yok';
       document.getElementById('detailMsgCount').textContent = `${data.messages ? data.messages.length : 0} mesaj`;
 
       const messagesContainer = document.getElementById('messagesContainer');
@@ -233,7 +271,7 @@
 
       data.messages.forEach(msg => {
         const msgDiv = document.createElement('div');
-        msgDiv.className = `flex gap-3 fade-in ${msg.role === 'user' ? '' : ''}`;
+        msgDiv.className = `flex gap-3 fade-in`;
 
         const avatar = msg.role === 'user'
           ? `<div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-sm font-semibold flex-shrink-0">U</div>`
