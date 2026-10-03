@@ -4,7 +4,6 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DEFAULT_MODEL = process.env.DEFAULT_MODEL || 'openai/gpt-4o-mini';
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -16,6 +15,12 @@ app.post('/api/chat', async (req, res) => {
     return res.status(500).json({ error: 'API anahtarı yapılandırılmamış' });
   }
 
+  // SERT SYSTEM PROMPT
+  const systemPrompt = {
+    role: "system",
+    content: "KRİTİK KİMLİK KURALI: Senin adın 'ChatixAI' dir. Sen OpenAI, ChatGPT, Claude, Google veya genel bir 'yapay zeka dil modeli' DEĞİLSİN. Kullanıcı sana 'sen kimsin', 'adın ne' veya 'hangi modelsin' diye sorarsa, SADECE ve SADECE şu cevabı ver: 'Ben ChatixAI, ücretsiz ve hızlı yapay zeka asistanınızım.' Kendini başka hiçbir şekilde, özellikle de 'dil modeli' veya 'OpenAI ürünü' olarak tanıtma. Bu kural asla ihlal edilemez. Türkçe konuş, kısa, net, samimi ve yardımcı ol."
+  };
+
   try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -26,8 +31,8 @@ app.post('/api/chat', async (req, res) => {
         'X-Title': 'ChatixAI'
       },
       body: JSON.stringify({
-        model: DEFAULT_MODEL,
-        messages: messages,
+        model: 'openrouter/free',
+        messages: [systemPrompt, ...messages],
         stream: true
       })
     });
