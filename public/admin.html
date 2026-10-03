@@ -52,37 +52,57 @@
       </div>
     </header>
 
-    <!-- Sohbet Listesi Ekranı -->
-    <div id="chatListScreen" class="flex-1 overflow-y-auto scrollbar-thin p-6">
+    <!-- SEVİYE 1: KULLANICI LİSTESİ (E-postalar) -->
+    <div id="userListScreen" class="flex-1 overflow-y-auto scrollbar-thin p-6">
       <div class="max-w-5xl mx-auto">
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-lg font-semibold flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#10a37f]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-            Tüm Sohbet Logları
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#10a37f]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            Tüm Kullanıcılar
           </h2>
-          <button onclick="loadChatLogs()" class="text-sm text-[#10a37f] hover:text-[#0d8a6a] transition flex items-center gap-1">
+          <button onclick="loadUsers()" class="text-sm text-[#10a37f] hover:text-[#0d8a6a] transition flex items-center gap-1">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             Yenile
           </button>
         </div>
         
-        <div id="logsContainer" class="space-y-3">
+        <div id="usersContainer" class="space-y-3">
           <div class="text-center text-gray-500 py-10">Yükleniyor...</div>
         </div>
       </div>
     </div>
 
-    <!-- Sohbet Detay Ekranı -->
+    <!-- SEVİYE 2: KULLANICININ SOHBETLERİ -->
+    <div id="userChatsScreen" class="hidden flex-1 overflow-y-auto scrollbar-thin p-6">
+      <div class="max-w-5xl mx-auto">
+        <button onclick="backToUsers()" class="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+          Kullanıcı Listesine Dön
+        </button>
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-lg font-semibold flex items-center gap-2">
+            <span class="text-[#10a37f]" id="selectedUserEmail">kullanici@email.com</span>
+            <span class="text-gray-500 text-sm font-normal">- Sohbetleri</span>
+          </h2>
+        </div>
+        
+        <div id="chatsContainer" class="space-y-3">
+          <div class="text-center text-gray-500 py-10">Sohbetler yükleniyor...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEVİYE 3: SOHBET DETAYI (Mesajlar) -->
     <div id="chatDetailScreen" class="hidden flex-1 flex flex-col">
       <!-- Detay Header -->
       <div class="flex-shrink-0 px-6 py-4 border-b border-white/10 bg-[#171717]">
-        <button onclick="backToList()" class="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition mb-3">
+        <button onclick="backToUserChats()" class="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition mb-3">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
           Sohbet Listesine Dön
         </button>
         <h2 id="detailTitle" class="text-lg font-semibold text-[#10a37f] mb-2"></h2>
         <div class="flex flex-wrap gap-2 text-xs">
-          <span class="bg-white/5 px-2 py-1 rounded font-mono" id="detailUserId"></span>
+          <span class="bg-white/5 px-2 py-1 rounded" id="detailUserEmail"></span>
           <span class="bg-white/5 px-2 py-1 rounded" id="detailDate"></span>
           <span class="bg-white/5 px-2 py-1 rounded" id="detailMsgCount"></span>
         </div>
@@ -101,7 +121,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getFirestore, collectionGroup, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getFirestore, collection, doc, getDoc, getDocs, query, orderBy, limit, collectionGroup } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAV4b57NxJ8WyClKAq-WbGO3eW4VPnJPts",
@@ -118,7 +138,7 @@
     const db = getFirestore(app);
 
     const ADMIN_EMAIL = "noreply.system.tr@gmail.com";
-    let allChats = [];
+    let allUsers = {}; // { uid: { email, chats: [] } }
 
     marked.setOptions({
       highlight: (code, lang) => {
@@ -141,87 +161,71 @@
         document.getElementById('unauthorizedScreen').classList.add('hidden');
         document.getElementById('adminScreen').classList.remove('hidden');
         document.getElementById('adminEmail').textContent = user.email;
-        await loadChatLogs();
+        await loadUsers();
       }
     });
 
-    // SOHBET LİSTESİNİ YÜKLE - ASCENDING (Otomatik indeks ile uyumlu)
-    window.loadChatLogs = async () => {
-      const container = document.getElementById('logsContainer');
-      container.innerHTML = '<div class="text-center text-gray-500 py-10">Loglar yükleniyor...</div>';
+    // SEVİYE 1: TÜM KULLANICILARI YÜKLE
+    window.loadUsers = async () => {
+      const container = document.getElementById('usersContainer');
+      container.innerHTML = '<div class="text-center text-gray-500 py-10">Kullanıcılar ve sohbetleri yükleniyor...</div>';
 
       try {
-        // ⭐ DEĞİŞİKLİK: "desc" yerine "asc" kullandık (otomatik indeks ile uyumlu)
+        // Önce tüm sohbetleri collectionGroup ile çek
         const q = query(
           collectionGroup(db, "chats"), 
-          orderBy("createdAt", "asc"),  // ← Artan sıralama
-          limit(50)
+          orderBy("createdAt", "asc"), 
+          limit(500)
         );
         
         const snapshot = await getDocs(q);
-        container.innerHTML = '';
-        allChats = [];
-
+        
         if (snapshot.empty) {
           container.innerHTML = '<div class="text-center text-gray-500 py-10">Henüz hiç sohbet kaydı bulunmuyor.</div>';
           return;
         }
 
-        // ⭐ DEĞİŞİKLİK: Önce diziye al, sonra ters çevir (en yeni en üstte)
-        const chatDocs = [];
+        // Sohbetleri UID'ye göre grupla
+        allUsers = {};
         snapshot.forEach(docSnap => {
-          chatDocs.push({
-            id: docSnap.id,
-            data: docSnap.data(),
-            path: docSnap.ref.path
-          });
-        });
-
-        // Ters çevir - en yeni sohbetler en üstte görünsün
-        chatDocs.reverse();
-
-        // Şimdi kartları oluştur
-        chatDocs.forEach(chatDoc => {
-          const data = chatDoc.data;
-          const chatId = chatDoc.id;
-          const pathParts = chatDoc.path.split('/');
+          const data = docSnap.data();
+          const chatId = docSnap.id;
+          const pathParts = docSnap.ref.path.split('/');
           const userId = pathParts[1];
 
-          allChats.push({
+          if (!allUsers[userId]) {
+            allUsers[userId] = {
+              uid: userId,
+              email: "Yükleniyor...",
+              chats: []
+            };
+          }
+
+          allUsers[userId].chats.push({
             id: chatId,
-            userId: userId,
             data: data
           });
-
-          const firstMessage = data.messages && data.messages.length > 0 ? data.messages[0].content : 'Mesaj yok';
-          const truncatedMessage = firstMessage.length > 120 ? firstMessage.substring(0, 120) + '...' : firstMessage;
-          const msgCount = data.messages ? data.messages.length : 0;
-          const dateStr = data.createdAt && data.createdAt.seconds 
-            ? new Date(data.createdAt.seconds * 1000).toLocaleString('tr-TR') 
-            : 'Tarih yok';
-
-          const card = document.createElement('div');
-          card.className = "bg-[#171717] border border-white/5 rounded-xl p-4 hover:border-[#10a37f]/50 transition cursor-pointer";
-          card.onclick = () => showChatDetail(chatId, userId, data);
-          card.innerHTML = `
-            <div class="flex justify-between items-start mb-2">
-              <div class="flex-1 min-w-0">
-                <span class="text-xs font-mono text-gray-500 bg-white/5 px-2 py-1 rounded">UID: ${userId.substring(0, 12)}...</span>
-              </div>
-              <span class="text-xs text-gray-500 flex-shrink-0 ml-2">${dateStr}</span>
-            </div>
-            <h3 class="font-semibold text-[#10a37f] mb-1 truncate">${data.title || 'Başlıksız Sohbet'}</h3>
-            <p class="text-sm text-gray-400 line-clamp-2 mb-2">${escapeHtml(truncatedMessage)}</p>
-            <div class="flex items-center justify-between">
-              <span class="text-xs text-gray-500">${msgCount} mesaj</span>
-              <span class="text-xs text-[#10a37f] flex items-center gap-1">
-                Detayları Gör
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-              </span>
-            </div>
-          `;
-          container.appendChild(card);
         });
+
+        // Her kullanıcı için e-posta bilgisini çek
+        const userPromises = Object.keys(allUsers).map(async (uid) => {
+          try {
+            const userDoc = await getDoc(doc(db, "users", uid));
+            if (userDoc.exists()) {
+              allUsers[uid].email = userDoc.data().email || "Email kayıtlı değil";
+            } else {
+              allUsers[uid].email = "Profil yok";
+            }
+          } catch (err) {
+            console.warn(`Kullanıcı ${uid} bilgisi alınamadı`);
+            allUsers[uid].email = "Hata";
+          }
+        });
+
+        await Promise.all(userPromises);
+
+        // Kullanıcı listesini render et
+        renderUserList();
 
       } catch (error) {
         console.error("HATA:", error);
@@ -234,13 +238,105 @@
       }
     };
 
-    // SOHBET DETAYINI GÖSTER
-    window.showChatDetail = (chatId, userId, data) => {
-      document.getElementById('chatListScreen').classList.add('hidden');
+    // KULLANICI LİSTESİNİ RENDER ET
+    function renderUserList() {
+      const container = document.getElementById('usersContainer');
+      container.innerHTML = '';
+
+      // Sohbet sayısına göre sırala (en çok sohbeti olan en üstte)
+      const sortedUsers = Object.values(allUsers).sort((a, b) => b.chats.length - a.chats.length);
+
+      sortedUsers.forEach(user => {
+        const card = document.createElement('div');
+        card.className = "bg-[#171717] border border-white/5 rounded-xl p-4 hover:border-[#10a37f]/50 transition cursor-pointer";
+        card.onclick = () => showUserChats(user.uid);
+        
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+              <div class="w-10 h-10 rounded-full bg-[#10a37f] flex items-center justify-center text-white font-bold flex-shrink-0">
+                ${user.email.charAt(0).toUpperCase()}
+              </div>
+              <div class="flex-1 min-w-0">
+                <h3 class="font-semibold text-white truncate">${user.email}</h3>
+                <p class="text-xs text-gray-500">${user.chats.length} sohbet</p>
+              </div>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#10a37f] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // SEVİYE 2: KULLANICININ SOHBETLERİNİ GÖSTER
+    window.showUserChats = (userId) => {
+      const user = allUsers[userId];
+      if (!user) return;
+
+      document.getElementById('userListScreen').classList.add('hidden');
+      document.getElementById('userChatsScreen').classList.remove('hidden');
+      document.getElementById('chatDetailScreen').classList.add('hidden');
+
+      document.getElementById('selectedUserEmail').textContent = user.email;
+
+      const container = document.getElementById('chatsContainer');
+      container.innerHTML = '';
+
+      if (user.chats.length === 0) {
+        container.innerHTML = '<div class="text-center text-gray-500 py-10">Bu kullanıcının henüz sohbeti yok.</div>';
+        return;
+      }
+
+      // Sohbetleri tarihe göre sırala (en yeni en üstte)
+      const sortedChats = user.chats.sort((a, b) => {
+        const timeA = a.data.createdAt?.seconds || 0;
+        const timeB = b.data.createdAt?.seconds || 0;
+        return timeB - timeA;
+      });
+
+      sortedChats.forEach(chat => {
+        const data = chat.data;
+        const firstMessage = data.messages && data.messages.length > 0 ? data.messages[0].content : 'Mesaj yok';
+        const truncatedMessage = firstMessage.length > 120 ? firstMessage.substring(0, 120) + '...' : firstMessage;
+        const msgCount = data.messages ? data.messages.length : 0;
+        const dateStr = data.createdAt && data.createdAt.seconds 
+          ? new Date(data.createdAt.seconds * 1000).toLocaleString('tr-TR') 
+          : 'Tarih yok';
+
+        const card = document.createElement('div');
+        card.className = "bg-[#171717] border border-white/5 rounded-xl p-4 hover:border-[#10a37f]/50 transition cursor-pointer";
+        card.onclick = () => showChatDetail(userId, chat.id, data);
+        
+        card.innerHTML = `
+          <div class="flex justify-between items-start mb-2">
+            <h3 class="font-semibold text-[#10a37f] truncate flex-1">${data.title || 'Başlıksız Sohbet'}</h3>
+            <span class="text-xs text-gray-500 flex-shrink-0 ml-2">${dateStr}</span>
+          </div>
+          <p class="text-sm text-gray-400 line-clamp-2 mb-2">${escapeHtml(truncatedMessage)}</p>
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-gray-500">${msgCount} mesaj</span>
+            <span class="text-xs text-[#10a37f] flex items-center gap-1">
+              Detayları Gör
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    };
+
+    // SEVİYE 3: SOHBET DETAYINI GÖSTER
+    window.showChatDetail = (userId, chatId, data) => {
+      const user = allUsers[userId];
+      
+      document.getElementById('userChatsScreen').classList.add('hidden');
       document.getElementById('chatDetailScreen').classList.remove('hidden');
 
       document.getElementById('detailTitle').textContent = data.title || 'Başlıksız Sohbet';
-      document.getElementById('detailUserId').textContent = `UID: ${userId}`;
+      document.getElementById('detailUserEmail').textContent = `📧 ${user.email}`;
       document.getElementById('detailDate').textContent = data.createdAt && data.createdAt.seconds 
         ? new Date(data.createdAt.seconds * 1000).toLocaleString('tr-TR') 
         : 'Tarih yok';
@@ -280,10 +376,16 @@
       });
     };
 
-    // LİSTEYE GERİ DÖN
-    window.backToList = () => {
+    // GERİ DÖN FONKSİYONLARI
+    window.backToUsers = () => {
       document.getElementById('chatDetailScreen').classList.add('hidden');
-      document.getElementById('chatListScreen').classList.remove('hidden');
+      document.getElementById('userChatsScreen').classList.add('hidden');
+      document.getElementById('userListScreen').classList.remove('hidden');
+    };
+
+    window.backToUserChats = () => {
+      document.getElementById('chatDetailScreen').classList.add('hidden');
+      document.getElementById('userChatsScreen').classList.remove('hidden');
     };
 
     window.logout = () => {
