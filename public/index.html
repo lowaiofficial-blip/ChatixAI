@@ -73,13 +73,43 @@
     .scrollbar-thin::-webkit-scrollbar { width: 6px; }
     .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
     .scrollbar-thin::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
-    .prose pre { background: #0d1117 !important; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.75rem 0; }
-    .prose code { font-family: 'Fira Code', monospace; font-size: 0.9em; }
+    
+    /* ChatGPT Tarzı Kod Blokları */
+    .prose pre { 
+      background: #0d1117 !important; 
+      padding: 1rem; 
+      border-radius: 0.5rem; 
+      overflow-x: auto; 
+      margin: 0.75rem 0;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .prose code { 
+      font-family: 'Fira Code', 'Consolas', monospace; 
+      font-size: 0.875em;
+      background: rgba(255,255,255,0.05);
+      padding: 0.125rem 0.375rem;
+      border-radius: 0.25rem;
+    }
+    .prose pre code {
+      background: transparent;
+      padding: 0;
+    }
     .prose p { margin-bottom: 0.75rem; line-height: 1.7; word-wrap: break-word; }
     .prose ul, .prose ol { margin-left: 1.5rem; margin-bottom: 0.75rem; }
-    .prose li { margin-bottom: 0.25rem; }
-
-    /* SHIMMER EFEKTİ - BELİRGİN BEYAZ */
+    .prose li { margin-bottom: 0.25rem; line-height: 1.7; }
+    .prose h1, .prose h2, .prose h3 { margin-top: 1.5rem; margin-bottom: 0.75rem; font-weight: 600; }
+    .prose h1 { font-size: 1.5em; }
+    .prose h2 { font-size: 1.25em; }
+    .prose h3 { font-size: 1.125em; }
+    .prose blockquote {
+      border-left: 3px solid #10a37f;
+      padding-left: 1rem;
+      margin: 1rem 0;
+      color: #9ca3af;
+      font-style: italic;
+    }
+    
+    /* SHIMMER EFEKTİ */
     .shimmer {
       background: linear-gradient(90deg, 
         rgba(255,255,255,0.3) 0%, 
@@ -110,8 +140,14 @@
       51%, 100% { opacity: 0; }
     }
 
-    .fade-in { animation: fadeIn 0.3s ease-in; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    /* Smooth Animasyonlar */
+    .fade-in { 
+      animation: fadeIn 0.4s ease-out; 
+    }
+    @keyframes fadeIn { 
+      from { opacity: 0; transform: translateY(8px); } 
+      to { opacity: 1; transform: translateY(0); } 
+    }
 
     .spinner {
       width: 20px; height: 20px;
@@ -122,6 +158,33 @@
       display: inline-block;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Mesaj Baloncukları */
+    .message-bubble {
+      transition: all 0.2s ease;
+    }
+    .message-bubble:hover {
+      background: rgba(255,255,255,0.02);
+    }
+
+    /* Input Focus Efekti */
+    .input-container {
+      transition: all 0.3s ease;
+    }
+    .input-container:focus-within {
+      box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.2);
+    }
+
+    /* Buton Hover Efektleri */
+    .btn-hover {
+      transition: all 0.2s ease;
+    }
+    .btn-hover:hover {
+      transform: translateY(-1px);
+    }
+    .btn-hover:active {
+      transform: translateY(0);
+    }
   </style>
 </head>
 <body>
@@ -135,7 +198,7 @@
         <p class="text-gray-400 text-sm">Ücretsiz yapay zeka asistanın</p>
       </div>
 
-      <button id="googleBtn" onclick="googleLogin()" class="w-full flex items-center justify-center gap-3 bg-white text-gray-700 font-medium py-3 px-4 rounded-xl border border-gray-300 hover:bg-gray-50 transition mb-6 shadow-sm">
+      <button id="googleBtn" onclick="googleLogin()" class="w-full flex items-center justify-center gap-3 bg-white text-gray-700 font-medium py-3 px-4 rounded-xl border border-gray-300 hover:bg-gray-50 transition mb-6 shadow-sm btn-hover">
         <svg class="h-5 w-5" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -154,10 +217,10 @@
       <div class="space-y-3">
         <input id="emailInput" type="email" autocomplete="off" placeholder="E-posta adresin" class="w-full bg-[#2f2f2f] px-4 py-3 rounded-xl border border-white/10 focus:outline-none focus:border-[#10a37f] text-sm transition">
         <input id="passwordInput" type="password" autocomplete="off" placeholder="Şifre (min 6 karakter)" class="w-full bg-[#2f2f2f] px-4 py-3 rounded-xl border border-white/10 focus:outline-none focus:border-[#10a37f] text-sm transition">
-        <button id="loginBtn" onclick="emailLogin()" class="w-full bg-[#10a37f] hover:bg-[#0d8a6a] text-white font-medium py-3 rounded-xl transition text-sm flex items-center justify-center gap-2">
+        <button id="loginBtn" onclick="emailLogin()" class="w-full bg-[#10a37f] hover:bg-[#0d8a6a] text-white font-medium py-3 rounded-xl transition text-sm flex items-center justify-center gap-2 btn-hover">
           <span id="loginBtnText">Giriş Yap</span>
         </button>
-        <button id="registerBtn" onclick="emailRegister()" class="w-full bg-white/5 hover:bg-white/10 text-white font-medium py-3 rounded-xl transition text-sm border border-white/10 flex items-center justify-center gap-2">
+        <button id="registerBtn" onclick="emailRegister()" class="w-full bg-white/5 hover:bg-white/10 text-white font-medium py-3 rounded-xl transition text-sm border border-white/10 flex items-center justify-center gap-2 btn-hover">
           <span id="registerBtnText">Hesap Oluştur</span>
         </button>
       </div>
@@ -172,11 +235,11 @@
 
     <aside id="sidebar">
       <div class="p-3 border-b border-white/5 flex items-center justify-between flex-shrink-0">
-        <button onclick="newChat()" class="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-left">
+        <button onclick="newChat()" class="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-white/10 transition text-left btn-hover">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
           <span class="text-sm font-medium">Yeni Sohbet</span>
         </button>
-        <button onclick="toggleSidebar()" class="md:hidden p-2 hover:bg-white/10 rounded-lg">
+        <button onclick="toggleSidebar()" class="md:hidden p-2 hover:bg-white/10 rounded-lg btn-hover">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
@@ -192,7 +255,7 @@
     <main>
       <header>
         <div class="flex items-center gap-3 flex-1 min-w-0">
-          <button onclick="toggleSidebar()" class="md:hidden p-2 -ml-2 hover:bg-white/10 rounded-lg flex-shrink-0">
+          <button onclick="toggleSidebar()" class="md:hidden p-2 -ml-2 hover:bg-white/10 rounded-lg flex-shrink-0 btn-hover">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
           </button>
           <h1 class="font-semibold text-lg flex items-center gap-2 truncate">
@@ -200,13 +263,13 @@
             <span class="hidden sm:inline">ChatixAI</span>
           </h1>
         </div>
-
+        
         <div class="relative flex-shrink-0">
-          <button id="profileBtn" class="flex items-center gap-2 hover:bg-white/10 p-1.5 rounded-lg transition">
+          <button id="profileBtn" class="flex items-center gap-2 hover:bg-white/10 p-1.5 rounded-lg transition btn-hover">
             <img id="headerAvatar" src="" class="h-8 w-8 rounded-full border border-white/10 hidden object-cover" alt="Avatar">
             <div id="headerInitial" class="h-8 w-8 rounded-full bg-[#10a37f] flex items-center justify-center text-sm font-semibold hidden"></div>
           </button>
-
+          
           <div id="profileDropdown" class="hidden">
             <div class="px-4 py-3 border-b border-white/5">
               <p class="text-sm font-medium text-white truncate" id="dropdownName">Kullanıcı</p>
@@ -228,19 +291,19 @@
           <h2 class="text-2xl sm:text-3xl font-semibold mb-2">ChatixAI'ye Hoş Geldin</h2>
           <p class="text-gray-400 mb-8 text-sm sm:text-base max-w-md">Ücretsiz yapay zeka asistanın. Nasıl yardımcı olabilirim?</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-2xl">
-            <button onclick="usePrompt('Bana Python ile basit bir hesap makinesi kodu yaz')" class="p-4 bg-[#2f2f2f] hover:bg-[#3a3a3a] rounded-xl text-left transition border border-white/5 group">
+            <button onclick="usePrompt('Bana Python ile basit bir hesap makinesi kodu yaz')" class="p-4 bg-[#2f2f2f] hover:bg-[#3a3a3a] rounded-xl text-left transition border border-white/5 group btn-hover">
               <div class="font-medium mb-1 text-sm sm:text-base group-hover:text-[#10a37f] transition">💻 Kod Yaz</div>
               <div class="text-xs sm:text-sm text-gray-400">Python ile hesap makinesi</div>
             </button>
-            <button onclick="usePrompt('Yapay zeka nedir, basitçe açıkla')" class="p-4 bg-[#2f2f2f] hover:bg-[#3a3a3a] rounded-xl text-left transition border border-white/5 group">
+            <button onclick="usePrompt('Yapay zeka nedir, basitçe açıkla')" class="p-4 bg-[#2f2f2f] hover:bg-[#3a3a3a] rounded-xl text-left transition border border-white/5 group btn-hover">
               <div class="font-medium mb-1 text-sm sm:text-base group-hover:text-[#10a37f] transition">📚 Açıkla</div>
               <div class="text-xs sm:text-sm text-gray-400">Yapay zeka nedir?</div>
             </button>
-            <button onclick="usePrompt('Bana motivasyonel bir şiir yaz')" class="p-4 bg-[#2f2f2f] hover:bg-[#3a3a3a] rounded-xl text-left transition border border-white/5 group">
+            <button onclick="usePrompt('Bana motivasyonel bir şiir yaz')" class="p-4 bg-[#2f2f2f] hover:bg-[#3a3a3a] rounded-xl text-left transition border border-white/5 group btn-hover">
               <div class="font-medium mb-1 text-sm sm:text-base group-hover:text-[#10a37f] transition">✍️ Yaratıcı Yazı</div>
               <div class="text-xs sm:text-sm text-gray-400">Motivasyonel bir şiir</div>
             </button>
-            <button onclick="usePrompt('İngilizce öğrenmek için günlük 5 cümle öner')" class="p-4 bg-[#2f2f2f] hover:bg-[#3a3a3a] rounded-xl text-left transition border border-white/5 group">
+            <button onclick="usePrompt('İngilizce öğrenmek için günlük 5 cümle öner')" class="p-4 bg-[#2f2f2f] hover:bg-[#3a3a3a] rounded-xl text-left transition border border-white/5 group btn-hover">
               <div class="font-medium mb-1 text-sm sm:text-base group-hover:text-[#10a37f] transition">🌍 Dil Öğren</div>
               <div class="text-xs sm:text-sm text-gray-400">İngilizce günlük cümleler</div>
             </button>
@@ -251,11 +314,11 @@
 
       <div class="input-area">
         <div class="w-full max-w-3xl mx-auto">
-          <div class="relative bg-[#2f2f2f] rounded-2xl border border-white/10 focus-within:border-[#10a37f]/50 transition shadow-lg">
+          <div class="input-container relative bg-[#2f2f2f] rounded-2xl border border-white/10 shadow-lg">
             <textarea id="userInput" rows="1" placeholder="ChatixAI'ye bir şey sor..."
               class="w-full bg-transparent px-4 py-3 sm:py-4 pr-14 resize-none focus:outline-none max-h-32 text-sm sm:text-base leading-relaxed"
               onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-            <button id="sendBtn" onclick="sendMessage()" class="absolute right-2 bottom-2 p-2.5 bg-white text-black rounded-xl hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center justify-center">
+            <button id="sendBtn" onclick="sendMessage()" class="absolute right-2 bottom-2 p-2.5 bg-white text-black rounded-xl hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center justify-center btn-hover">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12l14-7-7 17-3-7-4-3z"/></svg>
             </button>
           </div>
@@ -303,6 +366,18 @@
       currentUser = user;
       userInitialChar = (user.displayName ? user.displayName[0] : (user.email ? user.email[0] : 'U')).toUpperCase();
       showApp();
+      
+      // 🌟 YENİ: Kullanıcı profilini Firestore'a kaydet
+      try {
+        await setDoc(doc(db, "users", user.uid), {
+          email: user.email,
+          displayName: user.displayName || user.email.split('@')[0],
+          lastLogin: serverTimestamp()
+        }, { merge: true });
+      } catch (err) {
+        console.error('Profil kaydedilemedi:', err);
+      }
+      
       try {
         await loadUserChats();
       } catch (err) {
@@ -333,7 +408,7 @@
 
     const avatar = document.getElementById('headerAvatar');
     const initial = document.getElementById('headerInitial');
-
+    
     document.getElementById('dropdownName').textContent = currentUser.displayName || 'Kullanıcı';
     document.getElementById('dropdownEmail').textContent = currentUser.email || '';
 
@@ -360,15 +435,15 @@
     const googleBtn = document.getElementById('googleBtn');
     const loginBtn = document.getElementById('loginBtn');
     const registerBtn = document.getElementById('registerBtn');
-
+    
     googleBtn.disabled = false;
     googleBtn.style.opacity = '1';
     document.getElementById('googleBtnText').textContent = 'Google ile Giriş Yap';
-
+    
     loginBtn.disabled = false;
     loginBtn.style.opacity = '1';
     document.getElementById('loginBtnText').textContent = 'Giriş Yap';
-
+    
     registerBtn.disabled = false;
     registerBtn.style.opacity = '1';
     document.getElementById('registerBtnText').textContent = 'Hesap Oluştur';
@@ -389,7 +464,7 @@
     const email = document.getElementById('emailInput').value.trim();
     const password = document.getElementById('passwordInput').value;
     if (!email || !password) return showLoginError('E-posta ve şifre gerekli');
-
+    
     showLoading('loginBtn', 'loginBtnText', 'Giriş yapılıyor...');
     try {
       await signInWithEmailAndPassword(auth, email, password);
@@ -404,7 +479,7 @@
     const password = document.getElementById('passwordInput').value;
     if (!email || !password) return showLoginError('E-posta ve şifre gerekli');
     if (password.length < 6) return showLoginError('Şifre en az 6 karakter olmalı');
-
+    
     showLoading('registerBtn', 'registerBtnText', 'Hesap oluşturuluyor...');
     try {
       await createUserWithEmailAndPassword(auth, email, password);
@@ -525,7 +600,7 @@
       const chat = chats[id];
       const div = document.createElement('div');
       const isActive = id === currentChatId;
-      div.className = `flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer group transition mb-1 ${isActive ? 'bg-white/10 border border-white/5' : 'hover:bg-white/5 border border-transparent'}`;
+      div.className = `flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer group transition mb-1 ${isActive ? 'bg-white/10 border border-white/5' : 'hover:bg-white/5 border border-transparent'} btn-hover`;
       div.innerHTML = `
         <span class="text-sm truncate flex-1 pr-2 select-none" onclick="loadChat('${id}')">${chat.title}</span>
         <button onclick="deleteChat('${id}', event)" class="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-500/20 hover:text-red-400 rounded transition flex-shrink-0" title="Sil">
@@ -565,12 +640,12 @@
   function appendMessage(role, content, animate = true) {
     const messagesDiv = document.getElementById('messages');
     const div = document.createElement('div');
-    div.className = `flex gap-3 sm:gap-4 w-full ${animate ? 'fade-in' : ''}`;
-
+    div.className = `message-bubble flex gap-3 sm:gap-4 w-full p-3 rounded-xl ${animate ? 'fade-in' : ''}`;
+    
     const avatar = role === 'user'
       ? `<div class="w-8 h-8 rounded-full bg-[#10a37f] flex items-center justify-center text-sm font-semibold flex-shrink-0">${userInitialChar}</div>`
       : '<img src="https://i.imgur.com/0D0DKGI.png" class="w-8 h-8 rounded-full object-contain bg-white/10 p-1 flex-shrink-0 border border-white/10" alt="AI">';
-
+      
     div.innerHTML = `
       ${avatar}
       <div class="flex-1 min-w-0 prose prose-invert max-w-none text-sm sm:text-base">
@@ -582,81 +657,52 @@
     return div;
   }
 
-  // KULLANICI MESAJINA GÖRE ÖZEL THINKING METNİ
   function getThinkingText(message) {
     const lowerMsg = message.toLowerCase();
-
-    // Selamlaşma
+    
     if (lowerMsg.match(/^(naber|nasılsın|merhaba|selam|hey|hi|hello|günaydın|iyi akşamlar)/)) {
       return 'Sohbet ediyorum...';
     }
-
-    // Kimlik soruları
     if (lowerMsg.includes('sen kimsin') || lowerMsg.includes('adın ne') || lowerMsg.includes('kimsin') || lowerMsg.includes('chatgpt')) {
       return 'Kendimi tanıtıyorum...';
     }
-
-    // E-posta
     if (lowerMsg.includes('e-posta') || lowerMsg.includes('email') || lowerMsg.includes('mail')) {
       return 'E-posta metni hazırlıyorum...';
     }
-
-    // Kod yazma
     if (lowerMsg.includes('kod') || lowerMsg.includes('code') || lowerMsg.includes('program') || lowerMsg.includes('script')) {
       return 'Kod yazıyorum...';
     }
-
-    // Şiir/Hikaye
     if (lowerMsg.includes('şiir') || lowerMsg.includes('hikaye') || lowerMsg.includes('öykü')) {
       return 'Edebi eser oluşturuyorum...';
     }
-
-    // Çeviri
     if (lowerMsg.includes('çevir') || lowerMsg.includes('translate') || lowerMsg.includes('ingilizce')) {
       return 'Çeviri yapıyorum...';
     }
-
-    // Açıklama
     if (lowerMsg.includes('açıkla') || lowerMsg.includes('nedir') || lowerMsg.includes('anlat') || lowerMsg.includes('ne demek')) {
       return 'Açıklama hazırlıyorum...';
     }
-
-    // Özet
     if (lowerMsg.includes('özet') || lowerMsg.includes('summary') || lowerMsg.includes('kısalt')) {
       return 'Özet çıkarıyorum...';
     }
-
-    // Fikir/Öneri
     if (lowerMsg.includes('fikir') || lowerMsg.includes('öner') || lowerMsg.includes('tavsiye')) {
       return 'Fikir üretiyorum...';
     }
-
-    // Liste
     if (lowerMsg.includes('liste') || lowerMsg.includes('listele') || lowerMsg.includes('sırala')) {
       return 'Liste oluşturuyorum...';
     }
-
-    // Plan
     if (lowerMsg.includes('plan') || lowerMsg.includes('strateji') || lowerMsg.includes('adım')) {
       return 'Plan hazırlıyorum...';
     }
-
-    // Matematik/Hesaplama
     if (lowerMsg.includes('hesapla') || lowerMsg.includes('matematik') || lowerMsg.includes('topla') || lowerMsg.includes('çarp')) {
       return 'Hesaplama yapıyorum...';
     }
-
-    // Karşılaştırma
     if (lowerMsg.includes('karşılaştır') || lowerMsg.includes('fark') || lowerMsg.includes('aradaki')) {
       return 'Karşılaştırma yapıyorum...';
     }
-
-    // Düzeltme
     if (lowerMsg.includes('düzelt') || lowerMsg.includes('kontrol et') || lowerMsg.includes('hata')) {
       return 'Metni kontrol ediyorum...';
     }
-
-    // Default
+    
     return 'Cevap hazırlıyorum...';
   }
 
@@ -686,10 +732,9 @@
     appendMessage('user', message);
     renderChatList();
 
-    // AMPUL İKONU + ÖZEL THINKING METNİ (SHIMMER EFEKTİ)
     const assistantDiv = appendMessage('assistant', '', true);
     const contentDiv = assistantDiv.querySelector('.prose');
-
+    
     const thinkingText = getThinkingText(message);
     contentDiv.innerHTML = `
       <div class="flex items-center gap-2">
@@ -714,16 +759,15 @@
       let fullContent = '';
       let chunkCount = 0;
 
-      // Streaming başladı, shimmer'ı kaldır, cursor ekle
       contentDiv.innerHTML = '<span class="typing-cursor"></span>';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
+        
         const chunk = decoder.decode(value);
         const lines = chunk.split('\n').filter(line => line.trim() !== '');
-
+        
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const data = line.slice(6);
@@ -733,10 +777,10 @@
               if (parsed.content) {
                 fullContent += parsed.content;
                 chunkCount++;
-
+                
                 const delay = calculateStreamingDelay(fullContent.length, chunkCount);
                 await new Promise(resolve => setTimeout(resolve, delay));
-
+                
                 contentDiv.innerHTML = marked.parse(fullContent) + '<span class="typing-cursor"></span>';
                 scrollToBottom();
               }
