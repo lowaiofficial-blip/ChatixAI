@@ -44,8 +44,6 @@
       flex-shrink: 0; padding: 0.75rem 1rem;
       border-top: 1px solid rgba(255,255,255,0.05); background: #212121;
     }
-
-    /* BACKDROP DÜZELTMESİ */
     #backdrop {
       position: fixed; inset: 0;
       background: rgba(0,0,0,0.7);
@@ -59,7 +57,6 @@
     }
     @media (min-width: 768px) { #backdrop { display: none !important; } }
 
-    /* PROFILE DROPDOWN DÜZELTMESİ */
     #profileDropdown {
       position: absolute;
       right: 0; top: 100%;
@@ -81,10 +78,50 @@
     .prose p { margin-bottom: 0.75rem; line-height: 1.7; word-wrap: break-word; }
     .prose ul, .prose ol { margin-left: 1.5rem; margin-bottom: 0.75rem; }
     .prose li { margin-bottom: 0.25rem; }
-    .typing::after { content: '▊'; animation: blink 1s infinite; color: #10a37f; }
-    @keyframes blink { 50% { opacity: 0; } }
+
+    /* SHIMMER EFEKTİ - BELİRGİN BEYAZ */
+    .shimmer {
+      background: linear-gradient(90deg, 
+        rgba(255,255,255,0.3) 0%, 
+        rgba(255,255,255,1) 50%, 
+        rgba(255,255,255,0.3) 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 500;
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    /* STREAMING CURSOR */
+    .typing-cursor::after {
+      content: '|';
+      animation: blink 0.7s infinite;
+      color: #10a37f;
+      font-weight: bold;
+      margin-left: 2px;
+    }
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+
     .fade-in { animation: fadeIn 0.3s ease-in; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -98,15 +135,14 @@
         <p class="text-gray-400 text-sm">Ücretsiz yapay zeka asistanın</p>
       </div>
 
-      <!-- Google Giriş -->
-      <button onclick="googleLogin()" class="w-full flex items-center justify-center gap-3 bg-white text-gray-700 font-medium py-3 px-4 rounded-xl border border-gray-300 hover:bg-gray-50 transition mb-6 shadow-sm">
+      <button id="googleBtn" onclick="googleLogin()" class="w-full flex items-center justify-center gap-3 bg-white text-gray-700 font-medium py-3 px-4 rounded-xl border border-gray-300 hover:bg-gray-50 transition mb-6 shadow-sm">
         <svg class="h-5 w-5" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
           <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
         </svg>
-        Google ile Giriş Yap
+        <span id="googleBtnText">Google ile Giriş Yap</span>
       </button>
 
       <div class="flex items-center gap-3 mb-6">
@@ -115,12 +151,15 @@
         <div class="flex-1 h-px bg-white/10"></div>
       </div>
 
-      <!-- Email Giriş -->
       <div class="space-y-3">
         <input id="emailInput" type="email" autocomplete="off" placeholder="E-posta adresin" class="w-full bg-[#2f2f2f] px-4 py-3 rounded-xl border border-white/10 focus:outline-none focus:border-[#10a37f] text-sm transition">
         <input id="passwordInput" type="password" autocomplete="off" placeholder="Şifre (min 6 karakter)" class="w-full bg-[#2f2f2f] px-4 py-3 rounded-xl border border-white/10 focus:outline-none focus:border-[#10a37f] text-sm transition">
-        <button onclick="emailLogin()" class="w-full bg-[#10a37f] hover:bg-[#0d8a6a] text-white font-medium py-3 rounded-xl transition text-sm">Giriş Yap</button>
-        <button onclick="emailRegister()" class="w-full bg-white/5 hover:bg-white/10 text-white font-medium py-3 rounded-xl transition text-sm border border-white/10">Hesap Oluştur</button>
+        <button id="loginBtn" onclick="emailLogin()" class="w-full bg-[#10a37f] hover:bg-[#0d8a6a] text-white font-medium py-3 rounded-xl transition text-sm flex items-center justify-center gap-2">
+          <span id="loginBtnText">Giriş Yap</span>
+        </button>
+        <button id="registerBtn" onclick="emailRegister()" class="w-full bg-white/5 hover:bg-white/10 text-white font-medium py-3 rounded-xl transition text-sm border border-white/10 flex items-center justify-center gap-2">
+          <span id="registerBtnText">Hesap Oluştur</span>
+        </button>
       </div>
 
       <p id="loginError" class="text-red-400 text-sm text-center mt-4 hidden"></p>
@@ -162,14 +201,12 @@
           </h1>
         </div>
 
-        <!-- PROFİL MENÜSÜ -->
         <div class="relative flex-shrink-0">
           <button id="profileBtn" class="flex items-center gap-2 hover:bg-white/10 p-1.5 rounded-lg transition">
             <img id="headerAvatar" src="" class="h-8 w-8 rounded-full border border-white/10 hidden object-cover" alt="Avatar">
             <div id="headerInitial" class="h-8 w-8 rounded-full bg-[#10a37f] flex items-center justify-center text-sm font-semibold hidden"></div>
           </button>
 
-          <!-- Dropdown Menü -->
           <div id="profileDropdown" class="hidden">
             <div class="px-4 py-3 border-b border-white/5">
               <p class="text-sm font-medium text-white truncate" id="dropdownName">Kullanıcı</p>
@@ -228,7 +265,6 @@
     </main>
   </div>
 
-<!-- MODULAR FIREBASE SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -262,15 +298,21 @@
     breaks: true
   });
 
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(auth, async (user) => {
     if (user) {
       currentUser = user;
       userInitialChar = (user.displayName ? user.displayName[0] : (user.email ? user.email[0] : 'U')).toUpperCase();
       showApp();
-      loadUserChats();
+      try {
+        await loadUserChats();
+      } catch (err) {
+        console.error('Sohbetler yüklenemedi:', err);
+      }
       newChat();
     } else {
       currentUser = null;
+      chats = {};
+      currentChatId = null;
       showLogin();
     }
   });
@@ -279,6 +321,9 @@
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('appScreen').classList.add('hidden');
     document.getElementById('appScreen').classList.remove('flex');
+    document.getElementById('emailInput').value = '';
+    document.getElementById('passwordInput').value = '';
+    hideLoading();
   }
 
   function showApp() {
@@ -303,12 +348,40 @@
     }
   }
 
+  function showLoading(btnId, textId, loadingText) {
+    const btn = document.getElementById(btnId);
+    const text = document.getElementById(textId);
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    text.innerHTML = `<span class="spinner"></span> ${loadingText}`;
+  }
+
+  function hideLoading() {
+    const googleBtn = document.getElementById('googleBtn');
+    const loginBtn = document.getElementById('loginBtn');
+    const registerBtn = document.getElementById('registerBtn');
+
+    googleBtn.disabled = false;
+    googleBtn.style.opacity = '1';
+    document.getElementById('googleBtnText').textContent = 'Google ile Giriş Yap';
+
+    loginBtn.disabled = false;
+    loginBtn.style.opacity = '1';
+    document.getElementById('loginBtnText').textContent = 'Giriş Yap';
+
+    registerBtn.disabled = false;
+    registerBtn.style.opacity = '1';
+    document.getElementById('registerBtnText').textContent = 'Hesap Oluştur';
+  }
+
   window.googleLogin = async () => {
+    showLoading('googleBtn', 'googleBtnText', 'Giriş yapılıyor...');
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
     } catch (err) {
       showLoginError('Google girişi başarısız. Yetkili alan adlarını kontrol et.');
+      hideLoading();
     }
   };
 
@@ -316,10 +389,13 @@
     const email = document.getElementById('emailInput').value.trim();
     const password = document.getElementById('passwordInput').value;
     if (!email || !password) return showLoginError('E-posta ve şifre gerekli');
+
+    showLoading('loginBtn', 'loginBtnText', 'Giriş yapılıyor...');
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err) {
-      showLoginError('Giriş başarısız. Bilgileri kontrol et.');
+      showLoginError('Giriş başarısız. E-posta veya şifre hatalı.');
+      hideLoading();
     }
   };
 
@@ -328,20 +404,28 @@
     const password = document.getElementById('passwordInput').value;
     if (!email || !password) return showLoginError('E-posta ve şifre gerekli');
     if (password.length < 6) return showLoginError('Şifre en az 6 karakter olmalı');
+
+    showLoading('registerBtn', 'registerBtnText', 'Hesap oluşturuluyor...');
     try {
       await createUserWithEmailAndPassword(auth, email, password);
     } catch (err) {
       showLoginError('Kayıt başarısız. Bu e-posta zaten kullanılıyor olabilir.');
+      hideLoading();
     }
   };
 
-  window.logout = () => {
-    signOut(auth);
+  window.logout = async () => {
+    document.getElementById('profileDropdown').classList.add('hidden');
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error('Çıkış hatası:', err);
+    }
     chats = {};
     currentChatId = null;
-    document.getElementById('profileDropdown').classList.add('hidden');
-    document.getElementById('emailInput').value = '';
-    document.getElementById('passwordInput').value = '';
+    isGenerating = false;
+    document.getElementById('messages').innerHTML = '';
+    document.getElementById('chatList').innerHTML = '';
   };
 
   function showLoginError(msg) {
@@ -351,7 +435,6 @@
     setTimeout(() => el.classList.add('hidden'), 5000);
   }
 
-  // PROFILE DROPDOWN - DÜZELTİLMİŞ
   document.getElementById('profileBtn').addEventListener('click', (e) => {
     e.stopPropagation();
     document.getElementById('profileDropdown').classList.toggle('hidden');
@@ -360,7 +443,6 @@
   document.addEventListener('click', (e) => {
     const dropdown = document.getElementById('profileDropdown');
     const profileBtn = document.getElementById('profileBtn');
-
     if (!dropdown.classList.contains('hidden')) {
       if (!dropdown.contains(e.target) && !profileBtn.contains(e.target)) {
         dropdown.classList.add('hidden');
@@ -380,6 +462,7 @@
       renderChatList();
     } catch (err) {
       console.error('Sohbetler yüklenemedi:', err);
+      renderChatList();
     }
   };
 
@@ -499,6 +582,84 @@
     return div;
   }
 
+  // KULLANICI MESAJINA GÖRE ÖZEL THINKING METNİ
+  function getThinkingText(message) {
+    const lowerMsg = message.toLowerCase();
+
+    // Selamlaşma
+    if (lowerMsg.match(/^(naber|nasılsın|merhaba|selam|hey|hi|hello|günaydın|iyi akşamlar)/)) {
+      return 'Sohbet ediyorum...';
+    }
+
+    // Kimlik soruları
+    if (lowerMsg.includes('sen kimsin') || lowerMsg.includes('adın ne') || lowerMsg.includes('kimsin') || lowerMsg.includes('chatgpt')) {
+      return 'Kendimi tanıtıyorum...';
+    }
+
+    // E-posta
+    if (lowerMsg.includes('e-posta') || lowerMsg.includes('email') || lowerMsg.includes('mail')) {
+      return 'E-posta metni hazırlıyorum...';
+    }
+
+    // Kod yazma
+    if (lowerMsg.includes('kod') || lowerMsg.includes('code') || lowerMsg.includes('program') || lowerMsg.includes('script')) {
+      return 'Kod yazıyorum...';
+    }
+
+    // Şiir/Hikaye
+    if (lowerMsg.includes('şiir') || lowerMsg.includes('hikaye') || lowerMsg.includes('öykü')) {
+      return 'Edebi eser oluşturuyorum...';
+    }
+
+    // Çeviri
+    if (lowerMsg.includes('çevir') || lowerMsg.includes('translate') || lowerMsg.includes('ingilizce')) {
+      return 'Çeviri yapıyorum...';
+    }
+
+    // Açıklama
+    if (lowerMsg.includes('açıkla') || lowerMsg.includes('nedir') || lowerMsg.includes('anlat') || lowerMsg.includes('ne demek')) {
+      return 'Açıklama hazırlıyorum...';
+    }
+
+    // Özet
+    if (lowerMsg.includes('özet') || lowerMsg.includes('summary') || lowerMsg.includes('kısalt')) {
+      return 'Özet çıkarıyorum...';
+    }
+
+    // Fikir/Öneri
+    if (lowerMsg.includes('fikir') || lowerMsg.includes('öner') || lowerMsg.includes('tavsiye')) {
+      return 'Fikir üretiyorum...';
+    }
+
+    // Liste
+    if (lowerMsg.includes('liste') || lowerMsg.includes('listele') || lowerMsg.includes('sırala')) {
+      return 'Liste oluşturuyorum...';
+    }
+
+    // Plan
+    if (lowerMsg.includes('plan') || lowerMsg.includes('strateji') || lowerMsg.includes('adım')) {
+      return 'Plan hazırlıyorum...';
+    }
+
+    // Matematik/Hesaplama
+    if (lowerMsg.includes('hesapla') || lowerMsg.includes('matematik') || lowerMsg.includes('topla') || lowerMsg.includes('çarp')) {
+      return 'Hesaplama yapıyorum...';
+    }
+
+    // Karşılaştırma
+    if (lowerMsg.includes('karşılaştır') || lowerMsg.includes('fark') || lowerMsg.includes('aradaki')) {
+      return 'Karşılaştırma yapıyorum...';
+    }
+
+    // Düzeltme
+    if (lowerMsg.includes('düzelt') || lowerMsg.includes('kontrol et') || lowerMsg.includes('hata')) {
+      return 'Metni kontrol ediyorum...';
+    }
+
+    // Default
+    return 'Cevap hazırlıyorum...';
+  }
+
   window.sendMessage = async () => {
     const input = document.getElementById('userInput');
     const message = input.value.trim();
@@ -525,9 +686,19 @@
     appendMessage('user', message);
     renderChatList();
 
+    // AMPUL İKONU + ÖZEL THINKING METNİ (SHIMMER EFEKTİ)
     const assistantDiv = appendMessage('assistant', '', true);
     const contentDiv = assistantDiv.querySelector('.prose');
-    contentDiv.innerHTML = '<span class="typing"></span>';
+
+    const thinkingText = getThinkingText(message);
+    contentDiv.innerHTML = `
+      <div class="flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+        </svg>
+        <span class="shimmer">${thinkingText}</span>
+      </div>
+    `;
 
     try {
       const response = await fetch('/api/chat', {
@@ -541,12 +712,18 @@
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let fullContent = '';
+      let chunkCount = 0;
+
+      // Streaming başladı, shimmer'ı kaldır, cursor ekle
+      contentDiv.innerHTML = '<span class="typing-cursor"></span>';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+
         const chunk = decoder.decode(value);
         const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const data = line.slice(6);
@@ -555,13 +732,20 @@
               const parsed = JSON.parse(data);
               if (parsed.content) {
                 fullContent += parsed.content;
-                contentDiv.innerHTML = marked.parse(fullContent);
+                chunkCount++;
+
+                const delay = calculateStreamingDelay(fullContent.length, chunkCount);
+                await new Promise(resolve => setTimeout(resolve, delay));
+
+                contentDiv.innerHTML = marked.parse(fullContent) + '<span class="typing-cursor"></span>';
                 scrollToBottom();
               }
             } catch (e) {}
           }
         }
       }
+
+      contentDiv.innerHTML = marked.parse(fullContent);
 
       chats[currentChatId].messages.push({ role: 'assistant', content: fullContent });
       await saveChatToFirestore(currentChatId);
@@ -576,6 +760,13 @@
       input.focus();
     }
   };
+
+  function calculateStreamingDelay(totalLength, chunkCount) {
+    if (totalLength > 1000) return 10;
+    if (totalLength > 500) return 20;
+    if (totalLength > 200) return 30;
+    return 40;
+  }
 
   window.usePrompt = (prompt) => {
     document.getElementById('userInput').value = prompt;
