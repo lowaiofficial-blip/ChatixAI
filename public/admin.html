@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatixAI - Admin Paneli</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    body { background: #212121; color: #f3f4f6; }
+    .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+    .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+    .prose pre { background: #0d1117 !important; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.75rem 0; }
+    .prose code { font-family: 'Fira Code', monospace; font-size: 0.9em; }
+    .prose p { margin-bottom: 0.75rem; line-height: 1.7; word-wrap: break-word; }
+    .prose ul, .prose ol { margin-left: 1.5rem; margin-bottom: 0.75rem; }
+    .prose li { margin-bottom: 0.25rem; }
+    .fade-in { animation: fadeIn 0.3s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="h-screen flex flex-col">
+
+  <!-- YETKİSİZ ERİŞİM EKRANI -->
+  <div id="unauthorizedScreen" class="hidden fixed inset-0 z-50 bg-[#212121] flex flex-col items-center justify-center p-4">
+    <svg class="w-20 h-20 text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+    </svg>
+    <h1 class="text-3xl font-bold mb-2">Yetkisiz Erişim</h1>
+    <p class="text-gray-400 mb-8 text-center max-w-md">Bu alana yalnızca sistem yöneticileri girebilir.</p>
+    <button onclick="window.location.href='/'" class="bg-[#10a37f] hover:bg-[#0d8a6a] text-white px-8 py-3 rounded-xl font-medium transition flex items-center gap-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+      Ana Sayfaya Dön
+    </button>
+  </div>
+
+  <!-- ADMIN PANELİ -->
+  <div id="adminScreen" class="hidden flex-1 flex flex-col h-full">
+    <!-- Header -->
+    <header class="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#171717]">
+      <div class="flex items-center gap-3">
+        <img src="https://i.imgur.com/0D0DKGI.png" class="h-8 w-8 object-contain" alt="Logo">
+        <h1 class="text-xl font-bold">ChatixAI <span class="text-[#10a37f] text-sm font-normal ml-2">Yönetici Paneli</span></h1>
+      </div>
+      <div class="flex items-center gap-4">
+        <span id="adminEmail" class="text-sm text-gray-400 hidden sm:inline"></span>
+        <button onclick="logout()" class="text-sm text-red-400 hover:text-red-300 transition">Çıkış Yap</button>
+      </div>
+    </header>
+
+    <!-- Sohbet Listesi Ekranı -->
+    <div id="chatListScreen" class="flex-1 overflow-y-auto scrollbar-thin p-6">
+      <div class="max-w-5xl mx-auto">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-lg font-semibold flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-[#10a37f]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Tüm Sohbet Logları
+          </h2>
+          <button onclick="loadChatLogs()" class="text-sm text-[#10a37f] hover:text-[#0d8a6a] transition flex items-center gap-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Yenile
+          </button>
+        </div>
+
+        <div id="logsContainer" class="space-y-3">
+          <div class="text-center text-gray-500 py-10">Yükleniyor...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sohbet Detay Ekranı -->
+    <div id="chatDetailScreen" class="hidden flex-1 flex flex-col">
+      <!-- Detay Header -->
+      <div class="flex-shrink-0 px-6 py-4 border-b border-white/10 bg-[#171717]">
+        <button onclick="backToList()" class="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition mb-3">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+          Sohbet Listesine Dön
+        </button>
+        <h2 id="detailTitle" class="text-lg font-semibold text-[#10a37f] mb-2"></h2>
+        <div class="flex flex-wrap gap-2 text-xs">
+          <span class="bg-white/5 px-2 py-1 rounded font-mono" id="detailUserId"></span>
+          <span class="bg-white/5 px-2 py-1 rounded" id="detailDate"></span>
+          <span class="bg-white/5 px-2 py-1 rounded" id="detailMsgCount"></span>
+        </div>
+      </div>
+
+      <!-- Mesajlar -->
+      <div id="messagesContainer" class="flex-1 overflow-y-auto scrollbar-thin p-6">
+        <div class="max-w-3xl mx-auto space-y-6">
+          <div class="text-center text-gray-500 py-10">Mesajlar yükleniyor...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIREBASE SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, collectionGroup, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAV4b57NxJ8WyClKAq-WbGO3eW4VPnJPts",
+      authDomain: "chatixai.firebaseapp.com",
+      projectId: "chatixai",
+      storageBucket: "chatixai.firebasestorage.app",
+      messagingSenderId: "330931946688",
+      appId: "1:330931946688:web:efb2e12d122aec462d5925",
+      measurementId: "G-85XT90EG2C"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const ADMIN_EMAIL = "noreply.system.tr@gmail.com";
+    let allChats = []; // Tüm sohbetleri sakla
+
+    marked.setOptions({
+      highlight: (code, lang) => {
+        if (lang && hljs.getLanguage(lang)) return hljs.highlight(code, { language: lang }).value;
+        return hljs.highlightAuto(code).value;
+      },
+      breaks: true
+    });
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "/";
+        return;
+      }
+
+      if (user.email !== ADMIN_EMAIL) {
+        document.getElementById('unauthorizedScreen').classList.remove('hidden');
+        document.getElementById('adminScreen').classList.add('hidden');
+      } else {
+        document.getElementById('unauthorizedScreen').classList.add('hidden');
+        document.getElementById('adminScreen').classList.remove('hidden');
+        document.getElementById('adminEmail').textContent = user.email;
+        await loadChatLogs();
+      }
+    });
+
+    // SOHBET LİSTESİNİ YÜKLE
+    window.loadChatLogs = async () => {
+      const container = document.getElementById('logsContainer');
+      container.innerHTML = '<div class="text-center text-gray-500 py-10">Loglar yükleniyor...</div>';
+
+      try {
+        const q = query(
+          collectionGroup(db, "chats"), 
+          orderBy("createdAt", "desc"), 
+          limit(50)
+        );
+
+        const snapshot = await getDocs(q);
+        container.innerHTML = '';
+        allChats = [];
+
+        if (snapshot.empty) {
+          container.innerHTML = '<div class="text-center text-gray-500 py-10">Henüz hiç sohbet kaydı bulunmuyor.</div>';
+          return;
+        }
+
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const chatId = doc.id;
+          const pathParts = doc.ref.path.split('/');
+          const userId = pathParts[1];
+
+          allChats.push({
+            id: chatId,
+            userId: userId,
+            data: data
+          });
+
+          const firstMessage = data.messages && data.messages.length > 0 ? data.messages[0].content : 'Mesaj yok';
+          const truncatedMessage = firstMessage.length > 120 ? firstMessage.substring(0, 120) + '...' : firstMessage;
+          const msgCount = data.messages ? data.messages.length : 0;
+          const dateStr = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString('tr-TR') : 'Tarih yok';
+
+          const card = document.createElement('div');
+          card.className = "bg-[#171717] border border-white/5 rounded-xl p-4 hover:border-[#10a37f]/50 transition cursor-pointer";
+          card.onclick = () => showChatDetail(chatId, userId, data);
+          card.innerHTML = `
+            <div class="flex justify-between items-start mb-2">
+              <div class="flex-1 min-w-0">
+                <span class="text-xs font-mono text-gray-500 bg-white/5 px-2 py-1 rounded">UID: ${userId.substring(0, 12)}...</span>
+              </div>
+              <span class="text-xs text-gray-500 flex-shrink-0 ml-2">${dateStr}</span>
+            </div>
+            <h3 class="font-semibold text-[#10a37f] mb-1 truncate">${data.title || 'Başlıksız Sohbet'}</h3>
+            <p class="text-sm text-gray-400 line-clamp-2 mb-2">${escapeHtml(truncatedMessage)}</p>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-500">${msgCount} mesaj</span>
+              <span class="text-xs text-[#10a37f] flex items-center gap-1">
+                Detayları Gör
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </span>
+            </div>
+          `;
+          container.appendChild(card);
+        });
+
+      } catch (error) {
+        console.error("Loglar yüklenirken hata:", error);
+        container.innerHTML = `<div class="text-center text-red-400 py-10">Hata oluştu: ${error.message}</div>`;
+      }
+    };
+
+    // SOHBET DETAYINI GÖSTER
+    window.showChatDetail = (chatId, userId, data) => {
+      document.getElementById('chatListScreen').classList.add('hidden');
+      document.getElementById('chatDetailScreen').classList.remove('hidden');
+
+      document.getElementById('detailTitle').textContent = data.title || 'Başlıksız Sohbet';
+      document.getElementById('detailUserId').textContent = `UID: ${userId}`;
+      document.getElementById('detailDate').textContent = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString('tr-TR') : 'Tarih yok';
+      document.getElementById('detailMsgCount').textContent = `${data.messages ? data.messages.length : 0} mesaj`;
+
+      const messagesContainer = document.getElementById('messagesContainer');
+      messagesContainer.innerHTML = '<div class="max-w-3xl mx-auto space-y-6"></div>';
+      const messagesDiv = messagesContainer.querySelector('div');
+
+      if (!data.messages || data.messages.length === 0) {
+        messagesDiv.innerHTML = '<div class="text-center text-gray-500 py-10">Bu sohbette mesaj bulunmuyor.</div>';
+        return;
+      }
+
+      data.messages.forEach(msg => {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `flex gap-3 fade-in ${msg.role === 'user' ? '' : ''}`;
+
+        const avatar = msg.role === 'user'
+          ? `<div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-sm font-semibold flex-shrink-0">U</div>`
+          : '<img src="https://i.imgur.com/0D0DKGI.png" class="w-8 h-8 rounded-full object-contain bg-white/10 p-1 flex-shrink-0 border border-white/10" alt="AI">';
+
+        const roleLabel = msg.role === 'user' 
+          ? '<span class="text-xs text-blue-400 font-medium mb-1 block">Kullanıcı</span>'
+          : '<span class="text-xs text-[#10a37f] font-medium mb-1 block">ChatixAI</span>';
+
+        msgDiv.innerHTML = `
+          ${avatar}
+          <div class="flex-1 min-w-0">
+            ${roleLabel}
+            <div class="prose prose-invert max-w-none text-sm">
+              ${msg.role === 'user' ? `<p class="whitespace-pre-wrap">${escapeHtml(msg.content)}</p>` : marked.parse(msg.content)}
+            </div>
+          </div>
+        `;
+        messagesDiv.appendChild(msgDiv);
+      });
+    };
+
+    // LİSTEYE GERİ DÖN
+    window.backToList = () => {
+      document.getElementById('chatDetailScreen').classList.add('hidden');
+      document.getElementById('chatListScreen').classList.remove('hidden');
+    };
+
+    window.logout = () => {
+      signOut(auth).then(() => {
+        window.location.href = "/";
+      });
+    };
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
