@@ -16,6 +16,7 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT) {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// 1. WEB ARAMA ENDPOINT'İ (Jina AI)
 app.post('/api/web-search', async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL gerekli' });
@@ -32,65 +33,102 @@ app.post('/api/web-search', async (req, res) => {
   }
 });
 
+// 2. MANUS.AI OTONOM EYLEM ENDPOINT'İ (5 Dakika Timeout) 🪙
 app.post('/api/execute-agent', async (req, res) => {
   const { userId, prompt, url, cost } = req.body;
+
   if (!process.env.MANUS_API_KEY) {
     return res.status(500).json({ error: 'Manus API anahtarı yapılandırılmamış' });
   }
+
   try {
     const fullPrompt = url ? `${url} adresine git ve şunu yap: ${prompt}` : prompt;
+    
     const startResponse = await fetch('https://api.manus.ai/v1/tasks', {
       method: 'POST',
       headers: {
         'API_KEY': process.env.MANUS_API_KEY,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ prompt: fullPrompt })
+      body: JSON.stringify({
+        prompt: fullPrompt
+      })
     });
+
     if (!startResponse.ok) {
       const errText = await startResponse.text();
       throw new Error(`Manus Başlatma Hatası: ${errText}`);
     }
+
     const startData = await startResponse.json();
     const taskId = startData.task_id || startData.id;
-    if (!taskId) throw new Error('Manus görev kimliği alınamadı.');
 
+    if (!taskId) throw new Error('Manus görev kimliği (task_id) alınamadı.');
+
+    // ⏰ 5 DAKİKA TIMEOUT: 60 deneme x 5 saniye = 300 saniye
     let status = 'pending';
     let result = null;
     let attempts = 0;
-    const maxAttempts = 40;
+    const maxAttempts = 60;
+    const pollInterval = 5000;
+
+    console.log(`[Manus] Görev başlatıldı: ${taskId}, polling başlıyor...`);
 
     while (status === 'pending' && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+      
       const statusResponse = await fetch(`https://api.manus.ai/v1/tasks/${taskId}`, {
         method: 'GET',
-        headers: { 'API_KEY': process.env.MANUS_API_KEY, 'Content-Type': 'application/json' }
+        headers: {
+          'API_KEY': process.env.MANUS_API_KEY,
+          'Content-Type': 'application/json'
+        }
       });
+
       const statusData = await statusResponse.json();
       status = statusData.status;
+      
+      console.log(`[Manus] Deneme ${attempts + 1}/${maxAttempts} - Durum: ${status}`);
+
       if (status === 'completed') {
         result = statusData.result || statusData.output || "Görev başarıyla tamamlandı.";
       } else if (status === 'failed') {
         throw new Error(statusData.error || "Manus görevi başarısız oldu.");
       }
+      
       attempts++;
     }
+
     if (status !== 'completed') {
-      throw new Error('Görev zaman aşımına uğradı (2 dakika).');
+      throw new Error('Görev 5 dakika içinde tamamlanamadı. Lütfen tekrar deneyin veya daha basit bir görev verin.');
     }
+
+    // Başarılı ise Firestore'dan token düş
     if (admin.apps.length > 0) {
       await admin.firestore().collection('users').doc(userId).update({
         tokens: admin.firestore.FieldValue.increment(-cost)
       });
     }
-    res.json({ success: true, message: result, tokensDeducted: cost });
+
+    res.json({ 
+      success: true, 
+      message: result,
+      tokensDeducted: cost
+    });
+
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message || 'Otomasyon sırasında bir hata oluştu.' });
+    console.error('Agent Hatası:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Otomasyon sırasında bir hata oluştu.' 
+    });
   }
 });
 
+// 3. CHAT API
 app.post('/api/chat', async (req, res) => {
   const { messages, userTokens } = req.body;
+
   if (!process.env.OPENROUTER_API_KEY) {
     return res.status(500).json({ error: 'API anahtarı yapılandırılmamış' });
   }
@@ -127,20 +165,26 @@ Eğer kullanıcı senden bir web sitesine gidip işlem yapmasını isterse (form
         stream: true
       })
     });
+
     if (!response.ok) {
       const error = await response.text();
       return res.status(response.status).json({ error: error });
     }
+
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
+
       const chunk = decoder.decode(value);
       const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const data = line.slice(6);
@@ -161,10 +205,12 @@ Eğer kullanıcı senden bir web sitesine gidip işlem yapmasını isterse (form
     }
     res.end();
   } catch (error) {
+    console.error('API Hatası:', error);
     res.status(500).json({ error: 'Sunucu hatası' });
   }
 });
 
+// 4. ROUTES
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
