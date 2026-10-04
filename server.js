@@ -8,14 +8,46 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ADMIN PANEL ROUTE - ÖNEMLİ: Bu, catch-all'dan ÖNCE olmalı
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+// WEB ARAMA ENDPOINT'İ
+app.post('/api/web-search', async (req, res) => {
+  const { url } = req.body;
+
+  if (!url) {
+    return res.status(400).json({ error: 'URL gerekli' });
+  }
+
+  try {
+    // Jina AI Reader ile içeriği çek
+    const jinaUrl = `https://r.jina.ai/${url}`;
+    const response = await fetch(jinaUrl, {
+      headers: {
+        'Accept': 'text/plain',
+        'X-Return-Format': 'text'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Web içeriği alınamadı: ${response.status}`);
+    }
+
+    const content = await response.text();
+    
+    // İçeriği kısalt (çok uzunsa)
+    const maxLength = 8000;
+    const truncatedContent = content.length > maxLength 
+      ? content.substring(0, maxLength) + '... [içerik kısaltıldı]'
+      : content;
+
+    res.json({ content: truncatedContent });
+  } catch (error) {
+    console.error('Web arama hatası:', error);
+    res.status(500).json({ error: 'Web içeriği okunamadı' });
+  }
 });
 
 // CHAT API
 app.post('/api/chat', async (req, res) => {
-  const { messages } = req.body;
+  const { messages, webContent } = req.body;
 
   if (!process.env.OPENROUTER_API_KEY) {
     return res.status(500).json({ error: 'API anahtarı yapılandırılmamış' });
@@ -25,6 +57,18 @@ app.post('/api/chat', async (req, res) => {
     role: "system",
     content: "KRİTİK KİMLİK KURALI: Senin adın 'ChatixAI' dir. Sen OpenAI, ChatGPT, Claude, Google veya genel bir 'yapay zeka dil modeli' DEĞİLSİN. Kullanıcı sana 'sen kimsin', 'adın ne' veya 'hangi modelsin' diye sorarsa, SADECE ve SADECE şu cevabı ver: 'Ben ChatixAI, ücretsiz ve hızlı yapay zeka asistanınızım.' Kendini başka hiçbir şekilde, özellikle de 'dil modeli' veya 'OpenAI ürünü' olarak tanıtma. Bu kural asla ihlal edilemez. Türkçe konuş, kısa, net, samimi ve yardımcı ol."
   };
+
+  // Web içeriği varsa, system prompt'a ekle
+  let finalMessages = [systemPrompt];
+  
+  if (webContent) {
+    finalMessages.push({
+      role: "system",
+      content: `Kullanıcı sana bir web sitesinin içeriğini verdi. Bu içeriğe göre kullanıcının sorusunu cevapla. Web içeriği:\n\n${webContent}`
+    });
+  }
+  
+  finalMessages = [...finalMessages, ...messages];
 
   try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -37,7 +81,7 @@ app.post('/api/chat', async (req, res) => {
       },
       body: JSON.stringify({
         model: 'openrouter/free',
-        messages: [systemPrompt, ...messages],
+        messages: finalMessages,
         stream: true
       })
     });
@@ -86,7 +130,10 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// CATCH-ALL ROUTE - EN SONDA OLMALI
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
