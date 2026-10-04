@@ -8,7 +8,6 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">
   <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
-
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100vh; height: 100dvh; width: 100vw; overflow: hidden; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
@@ -49,18 +48,19 @@
     .btn-hover { transition: all 0.2s ease; }
     .btn-hover:hover { transform: translateY(-1px); }
     .btn-hover:active { transform: translateY(0); }
-    
-    /* Token Butonları */
-    .token-actions { display: flex; gap: 0.75rem; margin-top: 1rem; }
-    .token-btn { padding: 0.5rem 1.25rem; border-radius: 0.5rem; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.5rem; }
-    .token-btn-yes { background: #10a37f; color: white; border: 1px solid #10a37f; }
-    .token-btn-yes:hover { background: #0d8a6a; }
+    .token-actions { display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap; }
+    .token-btn { padding: 0.5rem 1.25rem; border-radius: 0.5rem; font-weight: 600; font-size: 0.875rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.5rem; border: none; }
+    .token-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .token-btn-yes { background: #10a37f; color: white; }
+    .token-btn-yes:hover:not(:disabled) { background: #0d8a6a; }
     .token-btn-no { background: transparent; color: #ef4444; border: 1px solid #ef4444; }
-    .token-btn-no:hover { background: rgba(239, 68, 68, 0.1); }
+    .token-btn-no:hover:not(:disabled) { background: rgba(239, 68, 68, 0.1); }
+    .token-status { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 0.5rem; margin-top: 1rem; color: #fbbf24; font-size: 0.875rem; }
+    .token-status-done { background: rgba(16, 163, 127, 0.1); border-color: rgba(16, 163, 127, 0.3); color: #10a37f; }
+    .token-status-error { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); color: #ef4444; }
   </style>
 </head>
 <body>
-
   <div id="loginScreen" class="fixed inset-0 z-50 bg-[#212121] flex items-center justify-center p-4">
     <div class="w-full max-w-sm">
       <div class="text-center mb-8">
@@ -114,14 +114,11 @@
             <img src="https://i.imgur.com/0D0DKGI.png" class="h-7 w-7 object-contain" alt="ChatixAI">
             <span class="hidden sm:inline">ChatixAI</span>
           </h1>
-          
-          <!-- 🪙 TOKEN GÖSTERGESİ -->
           <div class="hidden sm:flex items-center gap-1 bg-[#2f2f2f] px-3 py-1.5 rounded-full border border-white/10 mr-2">
             <span class="text-yellow-400 text-sm">🪙</span>
             <span id="userTokensDisplay" class="text-sm font-semibold text-white">0</span>
           </div>
         </div>
-        
         <div class="relative flex-shrink-0">
           <button id="profileBtn" class="flex items-center gap-2 hover:bg-white/10 p-1.5 rounded-lg transition btn-hover">
             <img id="headerAvatar" src="" class="h-8 w-8 rounded-full border border-white/10 hidden object-cover" alt="Avatar">
@@ -206,13 +203,10 @@
   let isGenerating = false;
   let userInitialChar = 'U';
   let userTokens = 0;
-  let pendingAgentTask = null; // Bekleyen agent görevi
+  let activeAgentTaskId = null; // ⚡ Race condition önleme
 
   marked.setOptions({
-    highlight: (code, lang) => {
-      if (lang && hljs.getLanguage(lang)) return hljs.highlight(code, { language: lang }).value;
-      return hljs.highlightAuto(code).value;
-    },
+    highlight: (code, lang) => lang && hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value,
     breaks: true
   });
 
@@ -221,28 +215,25 @@
       currentUser = user;
       userInitialChar = (user.displayName ? user.displayName[0] : (user.email ? user.email[0] : 'U')).toUpperCase();
       showApp();
-      
       try {
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
         const now = Date.now();
-        let newTokens = 10;
+        let newTokens = 50; // 🎁 İLK KAYITTA 50 TOKEN
         let lastReset = now;
 
         if (userSnap.exists()) {
           const data = userSnap.data();
           lastReset = data.lastTokenReset?.toDate?.()?.getTime() || 0;
           if (now - lastReset > 86400000) {
-            newTokens = (data.tokens || 0) + 10;
+            newTokens = (data.tokens || 0) + 20; // 📅 GÜNLÜK 20 TOKEN
             lastReset = now;
           } else {
             newTokens = data.tokens || 0;
           }
         }
-
         userTokens = newTokens;
         updateTokenDisplay();
-
         await setDoc(userRef, {
           email: user.email,
           displayName: user.displayName || user.email.split('@')[0],
@@ -250,11 +241,7 @@
           lastTokenReset: new Date(lastReset),
           lastLogin: serverTimestamp()
         }, { merge: true });
-
-      } catch (err) {
-        console.error('Profil/Token hatası:', err);
-      }
-      
+      } catch (err) { console.error('Profil/Token hatası:', err); }
       try { await loadUserChats(); } catch (err) { console.error('Sohbetler yüklenemedi:', err); }
       newChat();
     } else {
@@ -346,7 +333,7 @@
   window.logout = async () => {
     document.getElementById('profileDropdown').classList.add('hidden');
     try { await signOut(auth); } catch (err) { console.error('Çıkış hatası:', err); }
-    chats = {}; currentChatId = null; isGenerating = false; pendingAgentTask = null;
+    chats = {}; currentChatId = null; isGenerating = false; activeAgentTaskId = null;
     document.getElementById('messages').innerHTML = '';
     document.getElementById('chatList').innerHTML = '';
   };
@@ -403,7 +390,7 @@
   window.newChat = () => {
     currentChatId = null;
     isGenerating = false;
-    pendingAgentTask = null;
+    activeAgentTaskId = null;
     document.getElementById('welcome').classList.remove('hidden');
     const messagesDiv = document.getElementById('messages');
     messagesDiv.classList.add('hidden');
@@ -475,24 +462,19 @@
       ? `<div class="w-8 h-8 rounded-full bg-[#10a37f] flex items-center justify-center text-sm font-semibold flex-shrink-0">${userInitialChar}</div>`
       : '<img src="https://i.imgur.com/0D0DKGI.png" class="w-8 h-8 rounded-full object-contain bg-white/10 p-1 flex-shrink-0 border border-white/10" alt="AI">';
       
-    // TOKEN REQUEST PARSER
     let displayContent = content;
     let tokenButtons = '';
     const tokenMatch = content.match(/\[TOKEN_REQUEST:(\d+)\]([\s\S]*)/);
     
     if (tokenMatch && role === 'assistant') {
-      const cost = tokenMatch[1];
+      const cost = parseInt(tokenMatch[1]);
       const message = tokenMatch[2].trim();
       displayContent = message;
       
-      // Bekleyen görevi kaydet (URL ve prompt'u mesajdan çıkarmak basit bir yaklaşımdır, 
-      // idealde kullanıcı son mesajını referans alır)
-      pendingAgentTask = { cost: parseInt(cost), prompt: "Kullanıcının son isteğini gerçekleştir" };
-      
       tokenButtons = `
-        <div class="token-actions">
-          <button onclick="confirmAgentTask(true)" class="token-btn token-btn-yes">✅ Evet, Başlat</button>
-          <button onclick="confirmAgentTask(false)" class="token-btn token-btn-no">❌ Hayır, İptal</button>
+        <div class="token-actions" data-cost="${cost}">
+          <button onclick="confirmAgentTask(this, true, ${cost})" class="token-btn token-btn-yes">✅ Evet, Başlat (${cost} 🪙)</button>
+          <button onclick="confirmAgentTask(this, false, ${cost})" class="token-btn token-btn-no">❌ Hayır, İptal</button>
         </div>
       `;
     }
@@ -509,29 +491,41 @@
     return div;
   }
 
-  // 🪙 TOKEN ONAY MEKANİZMASI
-  window.confirmAgentTask = async (approved) => {
+  // ⚡ GÜVENLİ TOKEN ONAY MEKANİZMASI (Race condition önlemeli)
+  window.confirmAgentTask = async (clickedBtn, approved, cost) => {
+    // 1. Race condition kontrolü: Eğer zaten bir işlem sürüyorsa, yeni istek atma
+    if (activeAgentTaskId !== null) {
+      return;
+    }
+
+    // 2. Butonları hemen devre dışı yap
+    const actionsContainer = clickedBtn.parentElement;
+    const allButtons = actionsContainer.querySelectorAll('.token-btn');
+    allButtons.forEach(btn => {
+      btn.disabled = true;
+    });
+
     if (!approved) {
+      actionsContainer.innerHTML = '<div class="token-status token-status-error">❌ İşlem iptal edildi.</div>';
       appendMessage('assistant', 'Tamam, işlem iptal edildi. Başka nasıl yardımcı olabilirim?');
-      pendingAgentTask = null;
       return;
     }
 
-    if (!pendingAgentTask || userTokens < pendingAgentTask.cost) {
-      appendMessage('assistant', `🪙 Üzgünüm, bu işlem için yeterli tokenin yok. (Gerekli: ${pendingAgentTask?.cost || 100}, Mevcut: ${userTokens})`);
+    // 3. Token kontrolü
+    if (userTokens < cost) {
+      actionsContainer.innerHTML = `<div class="token-status token-status-error">🪙 Yetersiz token! (Gerekli: ${cost}, Mevcut: ${userTokens})</div>`;
+      appendMessage('assistant', `🪙 Üzgünüm, bu işlem için yeterli tokeniniz yok. Yarın 20 ücretsiz token kazanacaksınız.`);
       return;
     }
 
-    // Son kullanıcı mesajını al
+    // 4. Aktif görevi başlat (race condition kilidi)
+    activeAgentTaskId = Date.now();
+    actionsContainer.innerHTML = '<div class="token-status"><span class="spinner" style="width:16px;height:16px;border-width:2px;"></span> Manus aracı başlatılıyor, bu 10 saniye - 2 dakika sürebilir...</div>';
+
+    // 5. Son kullanıcı mesajını al
     const lastUserMsg = chats[currentChatId].messages.filter(m => m.role === 'user').pop();
     const prompt = lastUserMsg ? lastUserMsg.content : "Kullanıcının isteğini yerine getir";
     
-    // UI'ı güncelle
-    const actionDiv = document.querySelector('.token-actions');
-    if (actionDiv) {
-      actionDiv.innerHTML = '<span class="text-sm text-yellow-400 flex items-center gap-2"><span class="spinner" style="width:16px;height:16px;border-width:2px;"></span> Manus aracı başlatılıyor, bu 1-2 dakika sürebilir...</span>';
-    }
-
     try {
       const response = await fetch('/api/execute-agent', {
         method: 'POST',
@@ -540,28 +534,34 @@
           userId: currentUser.uid,
           prompt: prompt,
           url: extractUrl(prompt),
-          cost: pendingAgentTask.cost
+          cost: cost
         })
       });
 
       const result = await response.json();
 
       if (result.success) {
-        // Token'ı frontend'de de güncelle (Backend zaten güncelledi)
+        // Token'ı düş ve UI'ı güncelle
         userTokens -= result.tokensDeducted;
         updateTokenDisplay();
-        await updateDoc(doc(db, "users", currentUser.uid), {
-          tokens: increment(-result.tokensDeducted)
-        });
+        try {
+          await updateDoc(doc(db, "users", currentUser.uid), {
+            tokens: increment(-result.tokensDeducted)
+          });
+        } catch (err) { console.warn('Frontend token güncelleme:', err); }
 
-        appendMessage('assistant', `✅ **İşlem Başarıyla Tamamlandı!**\n\n${result.message}\n\n*Kalan Token: ${userTokens}*`);
+        actionsContainer.innerHTML = `<div class="token-status token-status-done">✅ İşlem tamamlandı! ${cost} 🪙 harcandı.</div>`;
+        appendMessage('assistant', `✅ **İşlem Başarıyla Tamamlandı!**\n\n${result.message}\n\n*Kalan Token: ${userTokens} 🪙*`);
       } else {
+        actionsContainer.innerHTML = `<div class="token-status token-status-error">❌ Hata: ${result.error}</div>`;
         appendMessage('assistant', `❌ **Hata:** ${result.error}\n\nTokeniniz iade edildi.`);
       }
     } catch (error) {
+      actionsContainer.innerHTML = '<div class="token-status token-status-error">❌ Sunucu hatası oluştu, lütfen tekrar deneyin.</div>';
       appendMessage('assistant', '❌ Sunucu hatası oluştu, lütfen tekrar deneyin.');
     } finally {
-      pendingAgentTask = null;
+      // 6. Kilidi kaldır
+      activeAgentTaskId = null;
     }
   };
 
@@ -630,10 +630,8 @@
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        
         const chunk = decoder.decode(value);
         const lines = chunk.split('\n').filter(line => line.trim() !== '');
-        
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const data = line.slice(6);
@@ -642,12 +640,8 @@
               const parsed = JSON.parse(data);
               if (parsed.content) {
                 fullContent += parsed.content;
-                
-                // Eğer token request geldiyse, anında render et
-                if (fullContent.includes('[TOKEN_REQUEST:')) {
-                   // Geçici olarak cursor'ı kaldır, butonlar appendMessage'da eklenecek
-                } else {
-                   contentDiv.innerHTML = marked.parse(fullContent) + '<span class="typing-cursor"></span>';
+                if (!fullContent.includes('[TOKEN_REQUEST:')) {
+                  contentDiv.innerHTML = marked.parse(fullContent) + '<span class="typing-cursor"></span>';
                 }
                 scrollToBottom();
               }
@@ -656,9 +650,8 @@
         }
       }
 
-      // Final render (Token butonları burada devreye girecek)
-      assistantDiv.remove(); // Eski geçici div'i sil
-      appendMessage('assistant', fullContent, false); // Butonlu halini ekle
+      assistantDiv.remove();
+      appendMessage('assistant', fullContent, false);
 
       chats[currentChatId].messages.push({ role: 'assistant', content: fullContent });
       await saveChatToFirestore(currentChatId);
@@ -666,7 +659,7 @@
 
     } catch (error) {
       console.error(error);
-      assistantDiv.innerHTML = '<p class="text-red-400 bg-red-400/10 p-3 rounded-lg border border-red-400/20">Bağlantı hatası oluştu.</p>';
+      contentDiv.innerHTML = '<p class="text-red-400 bg-red-400/10 p-3 rounded-lg border border-red-400/20">Bağlantı hatası oluştu.</p>';
     } finally {
       isGenerating = false;
       document.getElementById('sendBtn').disabled = false;
