@@ -491,16 +491,13 @@
     return div;
   }
 
+  // ⚡ FRONTEND POLLING MEKANİZMASI (Render timeout'u aşar)
   window.confirmAgentTask = async (clickedBtn, approved, cost) => {
-    if (activeAgentTaskId !== null) {
-      return;
-    }
+    if (activeAgentTaskId !== null) return;
 
     const actionsContainer = clickedBtn.parentElement;
     const allButtons = actionsContainer.querySelectorAll('.token-btn');
-    allButtons.forEach(btn => {
-      btn.disabled = true;
-    });
+    allButtons.forEach(btn => btn.disabled = true);
 
     if (!approved) {
       actionsContainer.innerHTML = '<div class="token-status token-status-error">❌ İşlem iptal edildi.</div>';
@@ -515,13 +512,14 @@
     }
 
     activeAgentTaskId = Date.now();
-    actionsContainer.innerHTML = '<div class="token-status"><span class="spinner" style="width:16px;height:16px;border-width:2px;"></span> Manus aracı başlatılıyor, bu 10 saniye - 5 dakika sürebilir...</div>';
+    actionsContainer.innerHTML = '<div class="token-status"><span class="spinner" style="width:16px;height:16px;border-width:2px;"></span> Manus aracı başlatılıyor...</div>';
 
     const lastUserMsg = chats[currentChatId].messages.filter(m => m.role === 'user').pop();
     const prompt = lastUserMsg ? lastUserMsg.content : "Kullanıcının isteğini yerine getir";
     
     try {
-      const response = await fetch('/api/execute-agent', {
+      // 1. Görevi başlat (sadece task_id döner, hızlı)
+      const startResponse = await fetch('/api/execute-agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -532,27 +530,66 @@
         })
       });
 
-      const result = await response.json();
+      const startResult = await startResponse.json();
 
-      if (result.success) {
-        userTokens -= result.tokensDeducted;
-        updateTokenDisplay();
-        try {
-          await updateDoc(doc(db, "users", currentUser.uid), {
-            tokens: increment(-result.tokensDeducted)
-          });
-        } catch (err) { console.warn('Frontend token güncelleme:', err); }
-
-        actionsContainer.innerHTML = `<div class="token-status token-status-done">✅ İşlem tamamlandı! ${cost} 🪙 harcandı.</div>`;
-        appendMessage('assistant', `✅ **İşlem Başarıyla Tamamlandı!**\n\n${result.message}\n\n*Kalan Token: ${userTokens} 🪙*`);
-      } else {
-        actionsContainer.innerHTML = `<div class="token-status token-status-error">❌ Hata: ${result.error}</div>`;
-        appendMessage('assistant', `❌ **Hata:** ${result.error}\n\n*Token düşülmedi, bakiyeniz aynı kaldı (${userTokens} 🪙).*`);
+      if (!startResult.success) {
+        throw new Error(startResult.error || 'Görev başlatılamadı');
       }
+
+      const taskId = startResult.taskId;
+      actionsContainer.innerHTML = '<div class="token-status"><span class="spinner" style="width:16px;height:16px;border-width:2px;"></span> Manus siteye gidiyor, işlem yapıyor... (10 saniye - 5 dakika sürebilir)</div>';
+
+      // 2. Frontend polling: Her 5 saniyede bir durumu sorgula
+      let attempts = 0;
+      const maxAttempts = 60; // 60 × 5sn = 5 dakika
+      const pollInterval = 5000;
+
+      const pollStatus = async () => {
+        if (attempts >= maxAttempts) {
+          actionsContainer.innerHTML = '<div class="token-status token-status-error">⏰ Görev 5 dakika içinde tamamlanamadı. Lütfen tekrar deneyin.</div>';
+          appendMessage('assistant', '⏰ Görev zaman aşımına uğradı. Token düşülmedi.');
+          activeAgentTaskId = null;
+          return;
+        }
+
+        try {
+          const statusResponse = await fetch(`/api/check-task-status?taskId=${taskId}&userId=${currentUser.uid}&cost=${cost}`);
+          const statusData = await statusResponse.json();
+
+          if (statusData.status === 'completed') {
+            // Başarılı!
+            userTokens -= statusData.tokensDeducted;
+            updateTokenDisplay();
+            
+            actionsContainer.innerHTML = `<div class="token-status token-status-done">✅ İşlem tamamlandı! ${cost} 🪙 harcandı.</div>`;
+            appendMessage('assistant', `✅ **İşlem Başarıyla Tamamlandı!**\n\n${statusData.result}\n\n*Kalan Token: ${userTokens} 🪙*`);
+            activeAgentTaskId = null;
+          } else if (statusData.status === 'failed') {
+            // Başarısız
+            actionsContainer.innerHTML = `<div class="token-status token-status-error">❌ Hata: ${statusData.error}</div>`;
+            appendMessage('assistant', `❌ **Hata:** ${statusData.error}\n\n*Token düşülmedi, bakiyeniz aynı kaldı (${userTokens} 🪙).*`);
+            activeAgentTaskId = null;
+          } else {
+            // Hala devam ediyor, tekrar dene
+            attempts++;
+            const message = statusData.message || `İşlem devam ediyor... (${attempts * 5}sn)`;
+            actionsContainer.innerHTML = `<div class="token-status"><span class="spinner" style="width:16px;height:16px;border-width:2px;"></span> ${message}</div>`;
+            
+            setTimeout(pollStatus, pollInterval);
+          }
+        } catch (err) {
+          console.error('Polling hatası:', err);
+          attempts++;
+          setTimeout(pollStatus, pollInterval);
+        }
+      };
+
+      // İlk polling'i başlat
+      setTimeout(pollStatus, pollInterval);
+
     } catch (error) {
-      actionsContainer.innerHTML = '<div class="token-status token-status-error">❌ Sunucu hatası oluştu, lütfen tekrar deneyin.</div>';
-      appendMessage('assistant', '❌ Sunucu hatası oluştu, lütfen tekrar deneyin.');
-    } finally {
+      actionsContainer.innerHTML = `<div class="token-status token-status-error">❌ Hata: ${error.message}</div>`;
+      appendMessage('assistant', `❌ ${error.message}`);
       activeAgentTaskId = null;
     }
   };
