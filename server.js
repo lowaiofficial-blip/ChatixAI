@@ -33,7 +33,7 @@ app.post('/api/web-search', async (req, res) => {
   }
 });
 
-// 2. MANUS.AI OTONOM EYLEM ENDPOINT'İ (5 Dakika Timeout) 🪙
+// 2. MANUS.AI GÖREV BAŞLATMA (Sadece başlatır, task_id döner)
 app.post('/api/execute-agent', async (req, res) => {
   const { userId, prompt, url, cost } = req.body;
 
@@ -50,9 +50,7 @@ app.post('/api/execute-agent', async (req, res) => {
         'API_KEY': process.env.MANUS_API_KEY,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        prompt: fullPrompt
-      })
+      body: JSON.stringify({ prompt: fullPrompt })
     });
 
     if (!startResponse.ok) {
@@ -63,69 +61,95 @@ app.post('/api/execute-agent', async (req, res) => {
     const startData = await startResponse.json();
     const taskId = startData.task_id || startData.id;
 
-    if (!taskId) throw new Error('Manus görev kimliği (task_id) alınamadı.');
+    if (!taskId) throw new Error('Manus görev kimliği alınamadı.');
 
-    // ⏰ 5 DAKİKA TIMEOUT: 60 deneme x 5 saniye = 300 saniye
-    let status = 'pending';
-    let result = null;
-    let attempts = 0;
-    const maxAttempts = 60;
-    const pollInterval = 5000;
+    console.log(`[Manus] Görev başlatıldı: ${taskId}`);
 
-    console.log(`[Manus] Görev başlatıldı: ${taskId}, polling başlıyor...`);
-
-    while (status === 'pending' && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, pollInterval));
-      
-      const statusResponse = await fetch(`https://api.manus.ai/v1/tasks/${taskId}`, {
-        method: 'GET',
-        headers: {
-          'API_KEY': process.env.MANUS_API_KEY,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const statusData = await statusResponse.json();
-      status = statusData.status;
-      
-      console.log(`[Manus] Deneme ${attempts + 1}/${maxAttempts} - Durum: ${status}`);
-
-      if (status === 'completed') {
-        result = statusData.result || statusData.output || "Görev başarıyla tamamlandı.";
-      } else if (status === 'failed') {
-        throw new Error(statusData.error || "Manus görevi başarısız oldu.");
-      }
-      
-      attempts++;
-    }
-
-    if (status !== 'completed') {
-      throw new Error('Görev 5 dakika içinde tamamlanamadı. Lütfen tekrar deneyin veya daha basit bir görev verin.');
-    }
-
-    // Başarılı ise Firestore'dan token düş
-    if (admin.apps.length > 0) {
-      await admin.firestore().collection('users').doc(userId).update({
-        tokens: admin.firestore.FieldValue.increment(-cost)
-      });
-    }
-
+    // Sadece task_id ve gerekli bilgileri döndür, polling yapma
     res.json({ 
       success: true, 
-      message: result,
-      tokensDeducted: cost
+      taskId: taskId,
+      message: 'Görev başarıyla başlatıldı. Durum sorgulanabilir.'
     });
 
   } catch (error) {
-    console.error('Agent Hatası:', error);
+    console.error('Agent Başlatma Hatası:', error);
     res.status(500).json({ 
       success: false, 
-      error: error.message || 'Otomasyon sırasında bir hata oluştu.' 
+      error: error.message || 'Görev başlatılamadı.' 
     });
   }
 });
 
-// 3. CHAT API
+// 3. MANUS.AI DURUM SORGULAMA (Frontend polling için)
+app.get('/api/check-task-status', async (req, res) => {
+  const { taskId, userId, cost } = req.query;
+
+  if (!taskId) {
+    return res.status(400).json({ error: 'Task ID gerekli' });
+  }
+
+  if (!process.env.MANUS_API_KEY) {
+    return res.status(500).json({ error: 'Manus API anahtarı yapılandırılmamış' });
+  }
+
+  try {
+    const statusResponse = await fetch(`https://api.manus.ai/v1/tasks/${taskId}`, {
+      method: 'GET',
+      headers: {
+        'API_KEY': process.env.MANUS_API_KEY,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const statusData = await statusResponse.json();
+    const status = statusData.status;
+
+    console.log(`[Manus] Durum sorgulama: ${taskId} - ${status}`);
+
+    // Eğer görev tamamlandıysa, token düş
+    if (status === 'completed' && userId && cost) {
+      const result = statusData.result || statusData.output || "Görev başarıyla tamamlandı.";
+      
+      if (admin.apps.length > 0) {
+        try {
+          await admin.firestore().collection('users').doc(userId).update({
+            tokens: admin.firestore.FieldValue.increment(-parseInt(cost))
+          });
+          console.log(`[Manus] Token düşüldü: ${cost} (User: ${userId})`);
+        } catch (err) {
+          console.error('Token düşme hatası:', err);
+        }
+      }
+
+      res.json({ 
+        status: 'completed', 
+        result: result,
+        tokensDeducted: parseInt(cost)
+      });
+    } else if (status === 'failed') {
+      res.json({ 
+        status: 'failed', 
+        error: statusData.error || "Görev başarısız oldu."
+      });
+    } else {
+      // pending veya running
+      res.json({ 
+        status: status,
+        message: statusData.message || 'İşlem devam ediyor...'
+      });
+    }
+
+  } catch (error) {
+    console.error('Durum Sorgulama Hatası:', error);
+    res.status(500).json({ 
+      status: 'error',
+      error: error.message || 'Durum sorgulanamadı.' 
+    });
+  }
+});
+
+// 4. CHAT API
 app.post('/api/chat', async (req, res) => {
   const { messages, userTokens } = req.body;
 
@@ -210,7 +234,7 @@ Eğer kullanıcı senden bir web sitesine gidip işlem yapmasını isterse (form
   }
 });
 
-// 4. ROUTES
+// 5. ROUTES
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
