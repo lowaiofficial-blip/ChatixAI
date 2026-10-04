@@ -203,7 +203,7 @@
   let isGenerating = false;
   let userInitialChar = 'U';
   let userTokens = 0;
-  let activeAgentTaskId = null; // ⚡ Race condition önleme
+  let activeAgentTaskId = null;
 
   marked.setOptions({
     highlight: (code, lang) => lang && hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value,
@@ -219,14 +219,14 @@
         const userRef = doc(db, "users", user.uid);
         const userSnap = await getDoc(userRef);
         const now = Date.now();
-        let newTokens = 50; // 🎁 İLK KAYITTA 50 TOKEN
+        let newTokens = 50;
         let lastReset = now;
 
         if (userSnap.exists()) {
           const data = userSnap.data();
           lastReset = data.lastTokenReset?.toDate?.()?.getTime() || 0;
           if (now - lastReset > 86400000) {
-            newTokens = (data.tokens || 0) + 20; // 📅 GÜNLÜK 20 TOKEN
+            newTokens = (data.tokens || 0) + 20;
             lastReset = now;
           } else {
             newTokens = data.tokens || 0;
@@ -491,14 +491,11 @@
     return div;
   }
 
-  // ⚡ GÜVENLİ TOKEN ONAY MEKANİZMASI (Race condition önlemeli)
   window.confirmAgentTask = async (clickedBtn, approved, cost) => {
-    // 1. Race condition kontrolü: Eğer zaten bir işlem sürüyorsa, yeni istek atma
     if (activeAgentTaskId !== null) {
       return;
     }
 
-    // 2. Butonları hemen devre dışı yap
     const actionsContainer = clickedBtn.parentElement;
     const allButtons = actionsContainer.querySelectorAll('.token-btn');
     allButtons.forEach(btn => {
@@ -511,18 +508,15 @@
       return;
     }
 
-    // 3. Token kontrolü
     if (userTokens < cost) {
       actionsContainer.innerHTML = `<div class="token-status token-status-error">🪙 Yetersiz token! (Gerekli: ${cost}, Mevcut: ${userTokens})</div>`;
       appendMessage('assistant', `🪙 Üzgünüm, bu işlem için yeterli tokeniniz yok. Yarın 20 ücretsiz token kazanacaksınız.`);
       return;
     }
 
-    // 4. Aktif görevi başlat (race condition kilidi)
     activeAgentTaskId = Date.now();
-    actionsContainer.innerHTML = '<div class="token-status"><span class="spinner" style="width:16px;height:16px;border-width:2px;"></span> Manus aracı başlatılıyor, bu 10 saniye - 2 dakika sürebilir...</div>';
+    actionsContainer.innerHTML = '<div class="token-status"><span class="spinner" style="width:16px;height:16px;border-width:2px;"></span> Manus aracı başlatılıyor, bu 10 saniye - 5 dakika sürebilir...</div>';
 
-    // 5. Son kullanıcı mesajını al
     const lastUserMsg = chats[currentChatId].messages.filter(m => m.role === 'user').pop();
     const prompt = lastUserMsg ? lastUserMsg.content : "Kullanıcının isteğini yerine getir";
     
@@ -541,7 +535,6 @@
       const result = await response.json();
 
       if (result.success) {
-        // Token'ı düş ve UI'ı güncelle
         userTokens -= result.tokensDeducted;
         updateTokenDisplay();
         try {
@@ -554,13 +547,12 @@
         appendMessage('assistant', `✅ **İşlem Başarıyla Tamamlandı!**\n\n${result.message}\n\n*Kalan Token: ${userTokens} 🪙*`);
       } else {
         actionsContainer.innerHTML = `<div class="token-status token-status-error">❌ Hata: ${result.error}</div>`;
-        appendMessage('assistant', `❌ **Hata:** ${result.error}\n\nTokeniniz iade edildi.`);
+        appendMessage('assistant', `❌ **Hata:** ${result.error}\n\n*Token düşülmedi, bakiyeniz aynı kaldı (${userTokens} 🪙).*`);
       }
     } catch (error) {
       actionsContainer.innerHTML = '<div class="token-status token-status-error">❌ Sunucu hatası oluştu, lütfen tekrar deneyin.</div>';
       appendMessage('assistant', '❌ Sunucu hatası oluştu, lütfen tekrar deneyin.');
     } finally {
-      // 6. Kilidi kaldır
       activeAgentTaskId = null;
     }
   };
