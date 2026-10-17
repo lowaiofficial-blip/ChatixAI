@@ -61,6 +61,7 @@
   </style>
 </head>
 <body>
+  <!-- GİRİŞ EKRANI (Aynı) -->
   <div id="loginScreen" class="fixed inset-0 z-50 bg-[#212121] flex items-center justify-center p-4">
     <div class="w-full max-w-sm">
       <div class="text-center mb-8">
@@ -83,6 +84,7 @@
     </div>
   </div>
 
+  <!-- ANA UYGULAMA -->
   <div id="appScreen" class="hidden w-full h-full flex">
     <div id="backdrop" onclick="toggleSidebar()"></div>
     <aside id="sidebar">
@@ -166,6 +168,40 @@
 
       <div class="input-area">
         <div class="w-full max-w-3xl mx-auto">
+          
+          <!-- 🌟 YENİ: MODEL SEÇİCİ VE TOOLTIP -->
+          <div class="mb-3 relative flex justify-center">
+            <button id="modelSelectorBtn" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#2f2f2f] hover:bg-[#3a3a3a] border border-white/10 transition text-xs text-gray-300 btn-hover">
+              <span id="currentModelName">Chatix-Lite</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </button>
+            
+            <!-- Model Popover (Açılır Kutu) -->
+            <div id="modelPopover" class="hidden absolute bottom-full mb-2 w-72 bg-[#171717] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+              <div class="p-3 border-b border-white/5 bg-white/5">
+                <p class="text-[11px] text-gray-300 leading-relaxed">
+                  💡 Spark ve Core modelleri yakında premium planlara geçecek. Hız ve yüksek zeka için tasarlanmış en yeni Chatix-Lite modeline sınırsız erişiminiz devam edecek.
+                </p>
+              </div>
+              <div class="p-1">
+                <button class="model-option w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 transition text-xs flex items-center justify-between" data-model="Chatix-Lite">
+                  <span class="font-medium text-white">Chatix-Lite</span>
+                  <span class="text-[10px] text-green-400 bg-green-400/10 px-1.5 py-0.5 rounded">Sınırsız</span>
+                </button>
+                <button class="model-option w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 transition text-xs flex items-center justify-between opacity-60 cursor-not-allowed" data-model="Chatix-Spark" disabled>
+                  <span class="font-medium text-white">Chatix-Spark</span>
+                  <span class="text-[10px] text-yellow-400 bg-yellow-400/10 px-1.5 py-0.5 rounded">Yakında</span>
+                </button>
+                <button class="model-option w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 transition text-xs flex items-center justify-between opacity-60 cursor-not-allowed" data-model="Chatix-Core" disabled>
+                  <span class="font-medium text-white">Chatix-Core</span>
+                  <span class="text-[10px] text-yellow-400 bg-yellow-400/10 px-1.5 py-0.5 rounded">Yakında</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div class="input-container relative bg-[#2f2f2f] rounded-2xl border border-white/10 shadow-lg">
             <textarea id="userInput" rows="1" placeholder="ChatixAI'ye bir şey sor..." class="w-full bg-transparent px-4 py-3 sm:py-4 pr-14 resize-none focus:outline-none max-h-32 text-sm sm:text-base leading-relaxed" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
             <button id="sendBtn" onclick="sendMessage()" class="absolute right-2 bottom-2 p-2.5 bg-white text-black rounded-xl hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center justify-center btn-hover">
@@ -204,10 +240,36 @@
   let userInitialChar = 'U';
   let userTokens = 0;
   let activeAgentTaskId = null;
+  let currentModel = 'Chatix-Lite'; // 🌟 Varsayılan Model
 
   marked.setOptions({
     highlight: (code, lang) => lang && hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value,
     breaks: true
+  });
+
+  // 🌟 MODEL SEÇİCİ EVENT LISTENERS
+  const modelSelectorBtn = document.getElementById('modelSelectorBtn');
+  const modelPopover = document.getElementById('modelPopover');
+  const currentModelNameEl = document.getElementById('currentModelName');
+
+  modelSelectorBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    modelPopover.classList.toggle('hidden');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!modelPopover.contains(e.target) && !modelSelectorBtn.contains(e.target)) {
+      modelPopover.classList.add('hidden');
+    }
+  });
+
+  document.querySelectorAll('.model-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      currentModel = btn.getAttribute('data-model');
+      currentModelNameEl.textContent = currentModel;
+      modelPopover.classList.add('hidden');
+    });
   });
 
   onAuthStateChanged(auth, async (user) => {
@@ -491,7 +553,6 @@
     return div;
   }
 
-  // ⚡ FRONTEND POLLING MEKANİZMASI (Render timeout'u aşar)
   window.confirmAgentTask = async (clickedBtn, approved, cost) => {
     if (activeAgentTaskId !== null) return;
 
@@ -518,7 +579,6 @@
     const prompt = lastUserMsg ? lastUserMsg.content : "Kullanıcının isteğini yerine getir";
     
     try {
-      // 1. Görevi başlat (sadece task_id döner, hızlı)
       const startResponse = await fetch('/api/execute-agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -531,22 +591,18 @@
       });
 
       const startResult = await startResponse.json();
-
-      if (!startResult.success) {
-        throw new Error(startResult.error || 'Görev başlatılamadı');
-      }
+      if (!startResult.success) throw new Error(startResult.error || 'Görev başlatılamadı');
 
       const taskId = startResult.taskId;
       actionsContainer.innerHTML = '<div class="token-status"><span class="spinner" style="width:16px;height:16px;border-width:2px;"></span> Manus siteye gidiyor, işlem yapıyor... (10 saniye - 5 dakika sürebilir)</div>';
 
-      // 2. Frontend polling: Her 5 saniyede bir durumu sorgula
       let attempts = 0;
-      const maxAttempts = 60; // 60 × 5sn = 5 dakika
+      const maxAttempts = 60;
       const pollInterval = 5000;
 
       const pollStatus = async () => {
         if (attempts >= maxAttempts) {
-          actionsContainer.innerHTML = '<div class="token-status token-status-error">⏰ Görev 5 dakika içinde tamamlanamadı. Lütfen tekrar deneyin.</div>';
+          actionsContainer.innerHTML = '<div class="token-status token-status-error">⏰ Görev 5 dakika içinde tamamlanamadı.</div>';
           appendMessage('assistant', '⏰ Görev zaman aşımına uğradı. Token düşülmedi.');
           activeAgentTaskId = null;
           return;
@@ -557,34 +613,26 @@
           const statusData = await statusResponse.json();
 
           if (statusData.status === 'completed') {
-            // Başarılı!
             userTokens -= statusData.tokensDeducted;
             updateTokenDisplay();
-            
             actionsContainer.innerHTML = `<div class="token-status token-status-done">✅ İşlem tamamlandı! ${cost} 🪙 harcandı.</div>`;
             appendMessage('assistant', `✅ **İşlem Başarıyla Tamamlandı!**\n\n${statusData.result}\n\n*Kalan Token: ${userTokens} 🪙*`);
             activeAgentTaskId = null;
           } else if (statusData.status === 'failed') {
-            // Başarısız
             actionsContainer.innerHTML = `<div class="token-status token-status-error">❌ Hata: ${statusData.error}</div>`;
             appendMessage('assistant', `❌ **Hata:** ${statusData.error}\n\n*Token düşülmedi, bakiyeniz aynı kaldı (${userTokens} 🪙).*`);
             activeAgentTaskId = null;
           } else {
-            // Hala devam ediyor, tekrar dene
             attempts++;
             const message = statusData.message || `İşlem devam ediyor... (${attempts * 5}sn)`;
             actionsContainer.innerHTML = `<div class="token-status"><span class="spinner" style="width:16px;height:16px;border-width:2px;"></span> ${message}</div>`;
-            
             setTimeout(pollStatus, pollInterval);
           }
         } catch (err) {
-          console.error('Polling hatası:', err);
           attempts++;
           setTimeout(pollStatus, pollInterval);
         }
       };
-
-      // İlk polling'i başlat
       setTimeout(pollStatus, pollInterval);
 
     } catch (error) {
@@ -644,7 +692,8 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           messages: chats[currentChatId].messages,
-          userTokens: userTokens
+          userTokens: userTokens,
+          selectedModelName: currentModel // 🌟 Seçilen modeli backend'e gönder
         })
       });
 
