@@ -58,10 +58,22 @@
     .token-status { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 0.5rem; margin-top: 1rem; color: #fbbf24; font-size: 0.875rem; }
     .token-status-done { background: rgba(16, 163, 127, 0.1); border-color: rgba(16, 163, 127, 0.3); color: #10a37f; }
     .token-status-error { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); color: #ef4444; }
+    
+    /* Model seçici - kilitli modeller için yumuşak stil */
+    .model-locked { cursor: not-allowed !important; }
+    .model-locked:hover { background: transparent !important; }
+    
+    /* Bilgi kutusu kapatma animasyonu */
+    .info-box-closing {
+      animation: slideUp 0.3s ease-out forwards;
+    }
+    @keyframes slideUp {
+      to { opacity: 0; transform: translateY(-10px); height: 0; padding: 0; margin: 0; overflow: hidden; }
+    }
   </style>
 </head>
 <body>
-  <!-- GİRİŞ EKRANI (Aynı) -->
+  <!-- GİRİŞ EKRANI -->
   <div id="loginScreen" class="fixed inset-0 z-50 bg-[#212121] flex items-center justify-center p-4">
     <div class="w-full max-w-sm">
       <div class="text-center mb-8">
@@ -169,39 +181,94 @@
       <div class="input-area">
         <div class="w-full max-w-3xl mx-auto">
           
-          <!-- 🌟 YENİ: MODEL SEÇİCİ VE TOOLTIP -->
-          <div class="mb-3 relative flex justify-center">
-            <button id="modelSelectorBtn" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#2f2f2f] hover:bg-[#3a3a3a] border border-white/10 transition text-xs text-gray-300 btn-hover">
-              <span id="currentModelName">Chatix-Lite</span>
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          <!-- 🌟 BİLGİ KUTUSU (Kapatılabilir) -->
+          <div id="infoBox" class="mb-3 relative px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#10a37f]/10 to-[#10a37f]/5 border border-[#10a37f]/20 flex items-start gap-2.5">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#10a37f] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <p class="text-[11px] text-gray-300 leading-relaxed flex-1 pr-6">
+              <span class="text-[#10a37f] font-semibold">ChatixAI model güncellemeleri</span> — Spark ve Core modelleri yakında premium planlara geçecek. Hız ve yüksek zeka için tasarlanmış en yeni Chatix-Lite modeline sınırsız erişiminiz devam edecek.
+            </p>
+            <!-- X Kapat Butonu -->
+            <button onclick="closeInfoBox()" class="absolute top-2 right-2 p-1 rounded-md hover:bg-white/10 transition text-gray-500 hover:text-white" title="Kapat">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- 🌟 MODEL SEÇİCİ BUTONU -->
+          <div class="mb-3 flex justify-center relative">
+            <button id="modelSelectorBtn" class="flex items-center gap-2 px-4 py-2 rounded-full bg-[#2f2f2f] hover:bg-[#3a3a3a] border border-white/10 transition text-xs text-gray-300 btn-hover">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-[#10a37f]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+              </svg>
+              <span id="currentModelName" class="font-medium">Chatix-Lite</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
               </svg>
             </button>
             
-            <!-- Model Popover (Açılır Kutu) -->
+            <!-- Model Popover -->
             <div id="modelPopover" class="hidden absolute bottom-full mb-2 w-72 bg-[#171717] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
-              <div class="p-3 border-b border-white/5 bg-white/5">
-                <p class="text-[11px] text-gray-300 leading-relaxed">
-                  💡 Spark ve Core modelleri yakında premium planlara geçecek. Hız ve yüksek zeka için tasarlanmış en yeni Chatix-Lite modeline sınırsız erişiminiz devam edecek.
-                </p>
-              </div>
               <div class="p-1">
-                <button class="model-option w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 transition text-xs flex items-center justify-between" data-model="Chatix-Lite">
-                  <span class="font-medium text-white">Chatix-Lite</span>
-                  <span class="text-[10px] text-green-400 bg-green-400/10 px-1.5 py-0.5 rounded">Sınırsız</span>
+                <!-- Chatix-Lite (Aktif - yanında hiçbir şey yok) -->
+                <button class="model-option w-full text-left px-3 py-3 rounded-lg hover:bg-white/5 transition text-xs flex items-center justify-between" data-model="Chatix-Lite">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-[#10a37f]/20 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#10a37f]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div class="font-medium text-white">Chatix-Lite</div>
+                      <div class="text-[10px] text-gray-500">Hızlı ve ücretsiz</div>
+                    </div>
+                  </div>
                 </button>
-                <button class="model-option w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 transition text-xs flex items-center justify-between opacity-60 cursor-not-allowed" data-model="Chatix-Spark" disabled>
-                  <span class="font-medium text-white">Chatix-Spark</span>
-                  <span class="text-[10px] text-yellow-400 bg-yellow-400/10 px-1.5 py-0.5 rounded">Yakında</span>
+                
+                <!-- Chatix-Spark (Kilitli - sadece kilit ikonu) -->
+                <button class="model-option model-locked w-full text-left px-3 py-3 rounded-lg transition text-xs flex items-center justify-between" data-model="Chatix-Spark" disabled>
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div class="font-medium text-white">Chatix-Spark</div>
+                      <div class="text-[10px] text-gray-500">Yüksek performans</div>
+                    </div>
+                  </div>
+                  <!-- Sadece kilit ikonu -->
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                  </svg>
                 </button>
-                <button class="model-option w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 transition text-xs flex items-center justify-between opacity-60 cursor-not-allowed" data-model="Chatix-Core" disabled>
-                  <span class="font-medium text-white">Chatix-Core</span>
-                  <span class="text-[10px] text-yellow-400 bg-yellow-400/10 px-1.5 py-0.5 rounded">Yakında</span>
+                
+                <!-- Chatix-Core (Kilitli - sadece kilit ikonu) -->
+                <button class="model-option model-locked w-full text-left px-3 py-3 rounded-lg transition text-xs flex items-center justify-between" data-model="Chatix-Core" disabled>
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div class="font-medium text-white">Chatix-Core</div>
+                      <div class="text-[10px] text-gray-500">En güçlü zeka</div>
+                    </div>
+                  </div>
+                  <!-- Sadece kilit ikonu -->
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                  </svg>
                 </button>
               </div>
             </div>
           </div>
 
+          <!-- INPUT CONTAINER -->
           <div class="input-container relative bg-[#2f2f2f] rounded-2xl border border-white/10 shadow-lg">
             <textarea id="userInput" rows="1" placeholder="ChatixAI'ye bir şey sor..." class="w-full bg-transparent px-4 py-3 sm:py-4 pr-14 resize-none focus:outline-none max-h-32 text-sm sm:text-base leading-relaxed" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
             <button id="sendBtn" onclick="sendMessage()" class="absolute right-2 bottom-2 p-2.5 bg-white text-black rounded-xl hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center justify-center btn-hover">
@@ -240,14 +307,30 @@
   let userInitialChar = 'U';
   let userTokens = 0;
   let activeAgentTaskId = null;
-  let currentModel = 'Chatix-Lite'; // 🌟 Varsayılan Model
+  let currentModel = 'Chatix-Lite';
 
   marked.setOptions({
     highlight: (code, lang) => lang && hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value,
     breaks: true
   });
 
-  // 🌟 MODEL SEÇİCİ EVENT LISTENERS
+  // 🌟 BİLGİ KUTUSU - Kapatma ve localStorage ile hatırlama
+  const infoBox = document.getElementById('infoBox');
+  
+  // Sayfa yüklendiğinde daha önce kapatıldıysa gizle
+  if (localStorage.getItem('chatixInfoBoxClosed') === 'true') {
+    infoBox.style.display = 'none';
+  }
+
+  window.closeInfoBox = () => {
+    infoBox.classList.add('info-box-closing');
+    setTimeout(() => {
+      infoBox.style.display = 'none';
+      localStorage.setItem('chatixInfoBoxClosed', 'true');
+    }, 300);
+  };
+
+  // 🌟 MODEL SEÇİCİ
   const modelSelectorBtn = document.getElementById('modelSelectorBtn');
   const modelPopover = document.getElementById('modelPopover');
   const currentModelNameEl = document.getElementById('currentModelName');
@@ -693,7 +776,7 @@
         body: JSON.stringify({ 
           messages: chats[currentChatId].messages,
           userTokens: userTokens,
-          selectedModelName: currentModel // 🌟 Seçilen modeli backend'e gönder
+          selectedModelName: currentModel
         })
       });
 
