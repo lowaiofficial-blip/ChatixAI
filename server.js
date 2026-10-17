@@ -16,7 +16,14 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT) {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 1. WEB ARAMA ENDPOINT'İ (Jina AI)
+// 🌟 MODEL HARİTALAMA (Frontend İsmi -> OpenRouter Gerçek Modeli)
+const MODEL_MAP = {
+  'Chatix-Lite': 'dots-studio/dots-3-note-preview:free',
+  'Chatix-Spark': 'cohere/north-mini-code:free',
+  'Chatix-Core': 'nvidia/nemotron-3.5-super-vl:free'
+};
+
+// 1. WEB ARAMA ENDPOINT'İ
 app.post('/api/web-search', async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL gerekli' });
@@ -33,129 +40,74 @@ app.post('/api/web-search', async (req, res) => {
   }
 });
 
-// 2. MANUS.AI GÖREV BAŞLATMA (Sadece başlatır, task_id döner)
+// 2. MANUS.AI GÖREV BAŞLATMA
 app.post('/api/execute-agent', async (req, res) => {
   const { userId, prompt, url, cost } = req.body;
-
-  if (!process.env.MANUS_API_KEY) {
-    return res.status(500).json({ error: 'Manus API anahtarı yapılandırılmamış' });
-  }
+  if (!process.env.MANUS_API_KEY) return res.status(500).json({ error: 'Manus API anahtarı yapılandırılmamış' });
 
   try {
     const fullPrompt = url ? `${url} adresine git ve şunu yap: ${prompt}` : prompt;
-    
     const startResponse = await fetch('https://api.manus.ai/v1/tasks', {
       method: 'POST',
-      headers: {
-        'API_KEY': process.env.MANUS_API_KEY,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'API_KEY': process.env.MANUS_API_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt: fullPrompt })
     });
 
-    if (!startResponse.ok) {
-      const errText = await startResponse.text();
-      throw new Error(`Manus Başlatma Hatası: ${errText}`);
-    }
-
+    if (!startResponse.ok) throw new Error(`Manus Başlatma Hatası: ${await startResponse.text()}`);
     const startData = await startResponse.json();
     const taskId = startData.task_id || startData.id;
-
     if (!taskId) throw new Error('Manus görev kimliği alınamadı.');
 
-    console.log(`[Manus] Görev başlatıldı: ${taskId}`);
-
-    // Sadece task_id ve gerekli bilgileri döndür, polling yapma
-    res.json({ 
-      success: true, 
-      taskId: taskId,
-      message: 'Görev başarıyla başlatıldı. Durum sorgulanabilir.'
-    });
-
+    res.json({ success: true, taskId: taskId, message: 'Görev başarıyla başlatıldı.' });
   } catch (error) {
-    console.error('Agent Başlatma Hatası:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Görev başlatılamadı.' 
-    });
+    res.status(500).json({ success: false, error: error.message || 'Görev başlatılamadı.' });
   }
 });
 
-// 3. MANUS.AI DURUM SORGULAMA (Frontend polling için)
+// 3. MANUS.AI DURUM SORGULAMA
 app.get('/api/check-task-status', async (req, res) => {
   const { taskId, userId, cost } = req.query;
-
-  if (!taskId) {
-    return res.status(400).json({ error: 'Task ID gerekli' });
-  }
-
-  if (!process.env.MANUS_API_KEY) {
-    return res.status(500).json({ error: 'Manus API anahtarı yapılandırılmamış' });
-  }
+  if (!taskId) return res.status(400).json({ error: 'Task ID gerekli' });
+  if (!process.env.MANUS_API_KEY) return res.status(500).json({ error: 'Manus API anahtarı yapılandırılmamış' });
 
   try {
     const statusResponse = await fetch(`https://api.manus.ai/v1/tasks/${taskId}`, {
       method: 'GET',
-      headers: {
-        'API_KEY': process.env.MANUS_API_KEY,
-        'Content-Type': 'application/json'
-      }
+      headers: { 'API_KEY': process.env.MANUS_API_KEY, 'Content-Type': 'application/json' }
     });
-
     const statusData = await statusResponse.json();
     const status = statusData.status;
 
-    console.log(`[Manus] Durum sorgulama: ${taskId} - ${status}`);
-
-    // Eğer görev tamamlandıysa, token düş
     if (status === 'completed' && userId && cost) {
       const result = statusData.result || statusData.output || "Görev başarıyla tamamlandı.";
-      
       if (admin.apps.length > 0) {
         try {
           await admin.firestore().collection('users').doc(userId).update({
             tokens: admin.firestore.FieldValue.increment(-parseInt(cost))
           });
-          console.log(`[Manus] Token düşüldü: ${cost} (User: ${userId})`);
-        } catch (err) {
-          console.error('Token düşme hatası:', err);
-        }
+        } catch (err) { console.error('Token düşme hatası:', err); }
       }
-
-      res.json({ 
-        status: 'completed', 
-        result: result,
-        tokensDeducted: parseInt(cost)
-      });
+      res.json({ status: 'completed', result: result, tokensDeducted: parseInt(cost) });
     } else if (status === 'failed') {
-      res.json({ 
-        status: 'failed', 
-        error: statusData.error || "Görev başarısız oldu."
-      });
+      res.json({ status: 'failed', error: statusData.error || "Görev başarısız oldu." });
     } else {
-      // pending veya running
-      res.json({ 
-        status: status,
-        message: statusData.message || 'İşlem devam ediyor...'
-      });
+      res.json({ status: status, message: statusData.message || 'İşlem devam ediyor...' });
     }
-
   } catch (error) {
-    console.error('Durum Sorgulama Hatası:', error);
-    res.status(500).json({ 
-      status: 'error',
-      error: error.message || 'Durum sorgulanamadı.' 
-    });
+    res.status(500).json({ status: 'error', error: error.message || 'Durum sorgulanamadı.' });
   }
 });
 
-// 4. CHAT API
+// 4. CHAT API (Model Seçimi Destekli)
 app.post('/api/chat', async (req, res) => {
-  const { messages, userTokens } = req.body;
+  const { messages, userTokens, selectedModelName } = req.body;
 
   if (!process.env.OPENROUTER_API_KEY) {
     return res.status(500).json({ error: 'API anahtarı yapılandırılmamış' });
   }
+
+  // Frontend'den gelen ismi gerçek modele çevir, yoksa varsayılanı (Lite) kullan
+  const actualModel = MODEL_MAP[selectedModelName] || MODEL_MAP['Chatix-Lite'];
 
   const systemPrompt = {
     role: "system",
@@ -168,10 +120,9 @@ Eğer kullanıcı senden bir web sitesine gidip işlem yapmasını isterse (form
    - BASİT İŞLEM (5 token): Sadece siteyi okuma, fiyat bulma, bilgi çekme
    - ORTA İŞLEM (20 token): Butona tıklama, form doldurma, arama yapma
    - ZOR İŞLEM (50 token): Kayıt olma, giriş yapma, mesaj atma, satın alma, CAPTCHA çözme
-3. Tam olarak şu formatta yanıt ver (sayı, işlemin ağırlığına göre değişecek):
+3. Tam olarak şu formatta yanıt ver:
 [TOKEN_REQUEST:X]
-🪙 Hesabınızda şu an ${userTokens || 0} token var. Bu işlem yaklaşık X token tüketecek. Kabul ediyor musunuz?
-4. Kullanıcı "Evet" derse işlemi başlat.`
+🪙 Hesabınızda şu an ${userTokens || 0} token var. Bu işlem yaklaşık X token tüketecek. Kabul ediyor musunuz?`
   };
 
   try {
@@ -184,7 +135,7 @@ Eğer kullanıcı senden bir web sitesine gidip işlem yapmasını isterse (form
         'X-Title': 'ChatixAI'
       },
       body: JSON.stringify({
-        model: 'openrouter/free',
+        model: actualModel, // 🌟 Dinamik model kullanımı
         messages: [systemPrompt, ...messages],
         stream: true
       })
