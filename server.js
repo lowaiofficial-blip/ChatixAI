@@ -16,66 +16,42 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT) {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 🌟 MODEL HARİTALAMA (Flash Lite Eklendi)
-const MODEL_MAP = {
-  'Chatix-Lite': 'dots-studio/dots-3-note-preview:free',
-  'Chatix-Spark': 'cohere/north-mini-code:free',
-  'Chatix-Core': 'nvidia/nemotron-3.5-super-vl:free',
-  'Flash Lite': 'gemini-3.5-flash-lite' // 🚀 Yeni Model Eklendi
-};
-
-// 🌟 GÖRSEL OLUŞTURMA ENDPOINT'İ
+// 🌟 GÖRSEL OLUŞTURMA ENDPOINT'İ (Gemini API)
 app.post('/api/generate-image', async (req, res) => {
   const { prompt } = req.body;
 
-  if (!process.env.OPENROUTER_API_KEY) {
-    return res.status(500).json({ error: 'API anahtarı yapılandırılmamış' });
+  if (!process.env.GEMINI_API_KEY) {
+    return res.status(500).json({ error: 'GEMINI_API_KEY yapılandırılmamış' });
   }
 
   try {
-    // OpenRouter üzerinden Görsel Üretim Modelleri (Nano Banana / Gemini Image)
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.SITE_URL || 'http://localhost:3000',
-        'X-Title': 'ChatixAI'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'gemini-3.1-flash-lite-image', // 🎨 İstediğin Görsel Modeli
-        messages: [
-          { role: 'user', content: prompt }
-        ],
-        modalities: ["image", "text"] // OpenRouter'da görsel üretmek için zorunlu
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ["TEXT", "IMAGE"] }
       })
     });
 
     if (!response.ok) {
       const error = await response.text();
-      return res.status(response.status).json({ error: `Görsel API Hatası: ${error}` });
+      return res.status(response.status).json({ error: `Gemini Görsel API Hatası: ${error}` });
     }
 
     const data = await response.json();
-    
-    // OpenRouter görsel sonuçlarını genellikle base64 veya url olarak döner
-    const message = data.choices[0]?.message;
     let imageUrl = null;
-
-    if (message && message.images && message.images.length > 0) {
-      const imageObj = message.images[0];
-      if (imageObj.image_url?.url) {
-        imageUrl = imageObj.image_url.url; // Base64 veya Direkt URL
+    
+    if (data.candidates && data.candidates[0]?.content?.parts) {
+      for (const part of data.candidates[0].content.parts) {
+        if (part.inlineData && part.inlineData.data) {
+          imageUrl = `data:image/png;base64,${part.inlineData.data}`;
+          break;
+        }
       }
-    } else if (message && message.content && message.content.includes('data:image')) {
-      // Bazı modeller direkt markdown içinde base64 döner
-      const match = message.content.match(/!\[.*?\]\((.*?)\)/);
-      if (match && match[1]) imageUrl = match[1];
     }
 
-    if (!imageUrl) {
-      return res.status(404).json({ error: 'Görsel oluşturulamadı veya format desteklenmiyor.' });
-    }
+    if (!imageUrl) return res.status(404).json({ error: 'Görsel oluşturulamadı.' });
 
     res.json({ success: true, imageUrl: imageUrl });
 
@@ -85,7 +61,7 @@ app.post('/api/generate-image', async (req, res) => {
   }
 });
 
-// 1. WEB ARAMA ENDPOINT'İ
+// 1. WEB ARAMA ENDPOINT'İ (Jina AI)
 app.post('/api/web-search', async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: 'URL gerekli' });
@@ -160,19 +136,15 @@ app.get('/api/check-task-status', async (req, res) => {
   }
 });
 
-// 4. CHAT API
+// 4. CHAT API (Tamamen Gemini API üzerinden)
 app.post('/api/chat', async (req, res) => {
-  const { messages, userTokens, selectedModelName } = req.body;
+  const { messages, userTokens } = req.body;
 
-  if (!process.env.OPENROUTER_API_KEY) {
-    return res.status(500).json({ error: 'API anahtarı yapılandırılmamış' });
+  if (!process.env.GEMINI_API_KEY) {
+    return res.status(500).json({ error: 'GEMINI_API_KEY yapılandırılmamış' });
   }
 
-  const actualModel = MODEL_MAP[selectedModelName] || MODEL_MAP['Chatix-Lite'];
-
-  const systemPrompt = {
-    role: "system",
-    content: `KRİTİK KİMLİK KURALI: Senin adın 'ChatixAI' dir. Sen OpenAI, ChatGPT, Claude veya genel bir 'yapay zeka dil modeli' DEĞİLSİN. Türkçe konuş, kısa, net, samimi ve yardımcı ol.
+  const systemInstructionText = `KRİTİK KİMLİK KURALI: Senin adın 'ChatixAI' dir. Sen OpenAI, ChatGPT, Claude, Google veya genel bir 'yapay zeka dil modeli' DEĞİLSİN. Türkçe konuş, kısa, net, samimi ve yardımcı ol.
 
 WEB OTOMASYONU VE AKILLI TOKEN KURALI:
 Eğer kullanıcı senden bir web sitesine gidip işlem yapmasını isterse:
@@ -183,28 +155,27 @@ Eğer kullanıcı senden bir web sitesine gidip işlem yapmasını isterse:
    - ZOR (50 token): Kayıt olma, mesaj atma, CAPTCHA
 3. Tam olarak şu formatta yanıt ver:
 [TOKEN_REQUEST:X]
-🪙 Hesabınızda şu an ${userTokens || 0} token var. Bu işlem yaklaşık X token tüketecek. Kabul ediyor musunuz?`
-  };
+🪙 Hesabınızda şu an ${userTokens || 0} token var. Bu işlem yaklaşık X token tüketecek. Kabul ediyor musunuz?`;
+
+  // Frontend'den gelen mesajları Gemini formatına çevir
+  const geminiContents = messages.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }]
+  }));
 
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.SITE_URL || 'http://localhost:3000',
-        'X-Title': 'ChatixAI'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: actualModel,
-        messages: [systemPrompt, ...messages],
-        stream: true
+        system_instruction: { parts: [{ text: systemInstructionText }] },
+        contents: geminiContents
       })
     });
 
     if (!response.ok) {
       const error = await response.text();
-      return res.status(response.status).json({ error: error });
+      return res.status(response.status).json({ error: `Gemini API Hatası: ${error}` });
     }
 
     res.setHeader('Content-Type', 'text/event-stream');
@@ -223,17 +194,17 @@ Eğer kullanıcı senden bir web sitesine gidip işlem yapmasını isterse:
 
       for (const line of lines) {
         if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') {
+          const dataStr = line.slice(6);
+          if (dataStr === '[DONE]') {
             res.write('data: [DONE]\n\n');
-            res.end();
-            return;
+            continue;
           }
           try {
-            const parsed = JSON.parse(data);
-            const content = parsed.choices[0]?.delta?.content || '';
-            if (content) {
-              res.write(`data: ${JSON.stringify({ content })}\n\n`);
+            const parsed = JSON.parse(dataStr);
+            // Gemini'den gelen metni frontend'in beklediği formata çevir
+            const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            if (text) {
+              res.write(`data: ${JSON.stringify({ content: text })}\n\n`);
             }
           } catch (e) {}
         }
@@ -241,7 +212,7 @@ Eğer kullanıcı senden bir web sitesine gidip işlem yapmasını isterse:
     }
     res.end();
   } catch (error) {
-    console.error('API Hatası:', error);
+    console.error('Gemini Chat Hatası:', error);
     res.status(500).json({ error: 'Sunucu hatası' });
   }
 });
