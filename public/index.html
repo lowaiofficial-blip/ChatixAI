@@ -33,8 +33,27 @@
     .prose ul, .prose ol { margin-left: 1.5rem; margin-bottom: 0.75rem; }
     .prose li { margin-bottom: 0.25rem; line-height: 1.7; }
     .prose blockquote { border-left: 3px solid #10a37f; padding-left: 1rem; margin: 1rem 0; color: #9ca3af; font-style: italic; }
-    .shimmer { background: linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,1) 50%, rgba(255,255,255,0.3) 100%); background-size: 200% 100%; animation: shimmer 1.5s infinite; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: 500; }
-    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    
+    /* 🌟 YEŞİL SHIMMER EFEKTİ (Düşünme Animasyonu) */
+    .shimmer-green {
+      background: linear-gradient(90deg, 
+        rgba(16, 163, 127, 0.1) 0%, 
+        rgba(16, 163, 127, 0.8) 50%, 
+        rgba(16, 163, 127, 0.1) 100%);
+      background-size: 200% 100%;
+      animation: shimmerGreen 1.2s infinite;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 600;
+      font-size: 0.95rem;
+      letter-spacing: 0.5px;
+    }
+    @keyframes shimmerGreen {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
     .typing-cursor::after { content: '|'; animation: blink 0.7s infinite; color: #10a37f; font-weight: bold; margin-left: 2px; }
     @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
     .fade-in { animation: fadeIn 0.4s ease-out; }
@@ -59,17 +78,85 @@
     .token-status-done { background: rgba(16, 163, 127, 0.1); border-color: rgba(16, 163, 127, 0.3); color: #10a37f; }
     .token-status-error { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); color: #ef4444; }
     
-    /* Model seçici - kilitli modeller için yumuşak stil */
     .model-locked { cursor: not-allowed !important; }
     .model-locked:hover { background: transparent !important; }
     
-    /* Bilgi kutusu kapatma animasyonu */
-    .info-box-closing {
-      animation: slideUp 0.3s ease-out forwards;
+    .info-box-closing { animation: slideUp 0.3s ease-out forwards; }
+    @keyframes slideUp { to { opacity: 0; transform: translateY(-10px); height: 0; padding: 0; margin: 0; overflow: hidden; } }
+
+    /* 🌟 GÖRSEL ÜRETİM SKELETON (Kare Kutu) */
+    .image-skeleton {
+      width: 100%;
+      max-width: 320px;
+      aspect-ratio: 1 / 1;
+      background: #2a2a2a;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
-    @keyframes slideUp {
-      to { opacity: 0; transform: translateY(-10px); height: 0; padding: 0; margin: 0; overflow: hidden; }
+    .image-skeleton:hover { transform: scale(1.01); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+    
+    .skeleton-loading {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+      background-size: 200% 100%;
+      animation: skeleton-shimmer 1.5s infinite;
     }
+    @keyframes skeleton-shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    /* 🌟 LIGHTBOX (Tam Ekran Önizleme) */
+    #imageLightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    #imageLightbox.active { display: flex; animation: fadeIn 0.2s ease-out; }
+    #lightboxImg {
+      max-width: 90vw;
+      max-height: 80vh;
+      object-fit: contain;
+      border-radius: 0.5rem;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+    .lightbox-controls {
+      margin-top: 1.5rem;
+      display: flex;
+      gap: 1rem;
+    }
+    .lightbox-btn {
+      padding: 0.75rem 1.5rem;
+      border-radius: 2rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+    .lightbox-btn-close { background: rgba(255,255,255,0.1); color: white; }
+    .lightbox-btn-close:hover { background: rgba(255,255,255,0.2); }
+    .lightbox-btn-download { background: #10a37f; color: white; }
+    .lightbox-btn-download:hover { background: #0d8a6a; transform: translateY(-2px); }
   </style>
 </head>
 <body>
@@ -161,9 +248,9 @@
               <div class="font-medium mb-1 text-sm sm:text-base group-hover:text-[#10a37f] transition">💻 Kod Yaz</div>
               <div class="text-xs sm:text-sm text-gray-400">Python ile hesap makinesi</div>
             </button>
-            <button onclick="usePrompt('https://github.com sitesini özetle')" class="p-4 bg-[#2f2f2f] hover:bg-[#3a3a3a] rounded-xl text-left transition border border-white/5 group btn-hover">
-              <div class="font-medium mb-1 text-sm sm:text-base group-hover:text-[#10a37f] transition">🌐 Web Arama</div>
-              <div class="text-xs sm:text-sm text-gray-400">Site içeriğini oku</div>
+            <button onclick="usePrompt('Bana uzayda yüzen neon bir kedi görseli oluştur')" class="p-4 bg-[#2f2f2f] hover:bg-[#3a3a3a] rounded-xl text-left transition border border-white/5 group btn-hover">
+              <div class="font-medium mb-1 text-sm sm:text-base group-hover:text-[#10a37f] transition">🎨 Görsel Üret</div>
+              <div class="text-xs sm:text-sm text-gray-400">Uzayda neon kedi</div>
             </button>
             <button onclick="usePrompt('Bana motivasyonel bir şiir yaz')" class="p-4 bg-[#2f2f2f] hover:bg-[#3a3a3a] rounded-xl text-left transition border border-white/5 group btn-hover">
               <div class="font-medium mb-1 text-sm sm:text-base group-hover:text-[#10a37f] transition">✍️ Yaratıcı Yazı</div>
@@ -181,15 +268,14 @@
       <div class="input-area">
         <div class="w-full max-w-3xl mx-auto">
           
-          <!-- 🌟 BİLGİ KUTUSU (Kapatılabilir) -->
+          <!-- BİLGİ KUTUSU -->
           <div id="infoBox" class="mb-3 relative px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#10a37f]/10 to-[#10a37f]/5 border border-[#10a37f]/20 flex items-start gap-2.5">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#10a37f] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
             <p class="text-[11px] text-gray-300 leading-relaxed flex-1 pr-6">
-              <span class="text-[#10a37f] font-semibold">ChatixAI model güncellemeleri</span> — Spark ve Core modelleri yakında premium planlara geçecek. Hız ve yüksek zeka için tasarlanmış en yeni Chatix-Lite modeline sınırsız erişiminiz devam edecek.
+              <span class="text-[#10a37f] font-semibold">ChatixAI model güncellemeleri</span> — Spark ve Core modelleri yakında premium planlara geçecek. Hız ve yüksek zeka için tasarlanmış en yeni Chatix-Lite ve Flash Lite modellerine sınırsız erişiminiz devam edecek.
             </p>
-            <!-- X Kapat Butonu -->
             <button onclick="closeInfoBox()" class="absolute top-2 right-2 p-1 rounded-md hover:bg-white/10 transition text-gray-500 hover:text-white" title="Kapat">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
@@ -197,7 +283,7 @@
             </button>
           </div>
 
-          <!-- 🌟 MODEL SEÇİCİ BUTONU -->
+          <!-- MODEL SEÇİCİ -->
           <div class="mb-3 flex justify-center relative">
             <button id="modelSelectorBtn" class="flex items-center gap-2 px-4 py-2 rounded-full bg-[#2f2f2f] hover:bg-[#3a3a3a] border border-white/10 transition text-xs text-gray-300 btn-hover">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-[#10a37f]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -209,10 +295,9 @@
               </svg>
             </button>
             
-            <!-- Model Popover -->
             <div id="modelPopover" class="hidden absolute bottom-full mb-2 w-72 bg-[#171717] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
               <div class="p-1">
-                <!-- Chatix-Lite (Aktif - yanında hiçbir şey yok) -->
+                <!-- Chatix-Lite -->
                 <button class="model-option w-full text-left px-3 py-3 rounded-lg hover:bg-white/5 transition text-xs flex items-center justify-between" data-model="Chatix-Lite">
                   <div class="flex items-center gap-2.5">
                     <div class="w-8 h-8 rounded-lg bg-[#10a37f]/20 flex items-center justify-center">
@@ -226,8 +311,23 @@
                     </div>
                   </div>
                 </button>
+
+                <!-- 🚀 YENİ: Flash Lite -->
+                <button class="model-option w-full text-left px-3 py-3 rounded-lg hover:bg-white/5 transition text-xs flex items-center justify-between" data-model="Flash Lite">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div class="font-medium text-white">Flash Lite</div>
+                      <div class="text-[10px] text-gray-500">Gemini 3.5 Flash Lite</div>
+                    </div>
+                  </div>
+                </button>
                 
-                <!-- Chatix-Spark (Kilitli - sadece kilit ikonu) -->
+                <!-- Chatix-Spark (Kilitli) -->
                 <button class="model-option model-locked w-full text-left px-3 py-3 rounded-lg transition text-xs flex items-center justify-between" data-model="Chatix-Spark" disabled>
                   <div class="flex items-center gap-2.5">
                     <div class="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center">
@@ -240,13 +340,12 @@
                       <div class="text-[10px] text-gray-500">Yüksek performans</div>
                     </div>
                   </div>
-                  <!-- Sadece kilit ikonu -->
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                   </svg>
                 </button>
                 
-                <!-- Chatix-Core (Kilitli - sadece kilit ikonu) -->
+                <!-- Chatix-Core (Kilitli) -->
                 <button class="model-option model-locked w-full text-left px-3 py-3 rounded-lg transition text-xs flex items-center justify-between" data-model="Chatix-Core" disabled>
                   <div class="flex items-center gap-2.5">
                     <div class="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
@@ -259,7 +358,6 @@
                       <div class="text-[10px] text-gray-500">En güçlü zeka</div>
                     </div>
                   </div>
-                  <!-- Sadece kilit ikonu -->
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                   </svg>
@@ -268,9 +366,9 @@
             </div>
           </div>
 
-          <!-- INPUT CONTAINER -->
+          <!-- INPUT -->
           <div class="input-container relative bg-[#2f2f2f] rounded-2xl border border-white/10 shadow-lg">
-            <textarea id="userInput" rows="1" placeholder="ChatixAI'ye bir şey sor..." class="w-full bg-transparent px-4 py-3 sm:py-4 pr-14 resize-none focus:outline-none max-h-32 text-sm sm:text-base leading-relaxed" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+            <textarea id="userInput" rows="1" placeholder="ChatixAI'ye bir şey sor veya görsel oluşturmasını iste..." class="w-full bg-transparent px-4 py-3 sm:py-4 pr-14 resize-none focus:outline-none max-h-32 text-sm sm:text-base leading-relaxed" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
             <button id="sendBtn" onclick="sendMessage()" class="absolute right-2 bottom-2 p-2.5 bg-white text-black rounded-xl hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center justify-center btn-hover">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12l14-7-7 17-3-7-4-3z"/></svg>
             </button>
@@ -279,6 +377,23 @@
         </div>
       </div>
     </main>
+  </div>
+
+  <!-- 🌟 LIGHTBOX (Görsel Önizleme Penceresi) -->
+  <div id="imageLightbox" onclick="closeLightbox(event)">
+    <div class="relative z-10" onclick="event.stopPropagation()">
+      <img id="lightboxImg" src="" alt="Önizleme">
+      <div class="lightbox-controls">
+        <button onclick="closeLightbox()" class="lightbox-btn lightbox-btn-close">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          Kapat
+        </button>
+        <button onclick="downloadImage()" class="lightbox-btn lightbox-btn-download">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Görseli İndir
+        </button>
+      </div>
+    </div>
   </div>
 
 <script type="module">
@@ -308,20 +423,18 @@
   let userTokens = 0;
   let activeAgentTaskId = null;
   let currentModel = 'Chatix-Lite';
+  let currentLightboxSrc = '';
 
   marked.setOptions({
     highlight: (code, lang) => lang && hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang }).value : hljs.highlightAuto(code).value,
     breaks: true
   });
 
-  // 🌟 BİLGİ KUTUSU - Kapatma ve localStorage ile hatırlama
+  // BİLGİ KUTUSU
   const infoBox = document.getElementById('infoBox');
-  
-  // Sayfa yüklendiğinde daha önce kapatıldıysa gizle
   if (localStorage.getItem('chatixInfoBoxClosed') === 'true') {
     infoBox.style.display = 'none';
   }
-
   window.closeInfoBox = () => {
     infoBox.classList.add('info-box-closing');
     setTimeout(() => {
@@ -330,7 +443,7 @@
     }, 300);
   };
 
-  // 🌟 MODEL SEÇİCİ
+  // MODEL SEÇİCİ
   const modelSelectorBtn = document.getElementById('modelSelectorBtn');
   const modelPopover = document.getElementById('modelPopover');
   const currentModelNameEl = document.getElementById('currentModelName');
@@ -355,6 +468,31 @@
     });
   });
 
+  // 🌟 LIGHTBOX FONKSİYONLARI
+  window.openLightbox = (src) => {
+    currentLightboxSrc = src;
+    document.getElementById('lightboxImg').src = src;
+    document.getElementById('imageLightbox').classList.add('active');
+    document.body.style.overflow = 'hidden'; // Arkadaki sayfayı kilitle
+  };
+
+  window.closeLightbox = (e) => {
+    if (e && e.target !== e.currentTarget) return; // Sadece dışarı tıklayınca kapan
+    document.getElementById('imageLightbox').classList.remove('active');
+    document.body.style.overflow = '';
+  };
+
+  window.downloadImage = () => {
+    if (!currentLightboxSrc) return;
+    const link = document.createElement('a');
+    link.href = currentLightboxSrc;
+    link.download = `chatixai-gorsel-${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // AUTH & FIRESTORE (Değişmedi)
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       currentUser = user;
@@ -580,7 +718,13 @@
     const messagesDiv = document.getElementById('messages');
     messagesDiv.classList.remove('hidden');
     messagesDiv.innerHTML = '';
-    chat.messages.forEach(msg => appendMessage(msg.role, msg.content, false));
+    chat.messages.forEach(msg => {
+      if (msg.type === 'image') {
+        appendImageMessage(msg.content);
+      } else {
+        appendMessage(msg.role, msg.content, false);
+      }
+    });
     renderChatList();
     scrollToBottom();
     if (window.innerWidth < 768) {
@@ -634,6 +778,56 @@
     messagesDiv.appendChild(div);
     scrollToBottom();
     return div;
+  }
+
+  // 🌟 GÖRSEL MESAJI EKLEME (Kare kutu ve tıkla-önizle)
+  function appendImageMessage(imageSrc) {
+    const messagesDiv = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `message-bubble flex gap-3 sm:gap-4 w-full p-3 rounded-xl fade-in`;
+    
+    div.innerHTML = `
+      <img src="https://i.imgur.com/0D0DKGI.png" class="w-8 h-8 rounded-full object-contain bg-white/10 p-1 flex-shrink-0 border border-white/10 mt-1" alt="AI">
+      <div class="flex-1 min-w-0">
+        <div class="image-skeleton" onclick="openLightbox('${imageSrc}')" style="border: none; background: none; padding: 0;">
+           <img src="${imageSrc}" alt="Oluşturulan Görsel" class="w-full h-full object-cover rounded-xl border border-white/10 shadow-lg transition-transform duration-300 hover:scale-[1.02]">
+        </div>
+      </div>
+    `;
+    messagesDiv.appendChild(div);
+    scrollToBottom();
+  }
+
+  // 🌟 GÖRSEL ÜRETİM SKELETON'I OLUŞTURMA
+  function createImageSkeleton() {
+    const messagesDiv = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `message-bubble flex gap-3 sm:gap-4 w-full p-3 rounded-xl fade-in`;
+    div.id = 'img-skeleton-temp';
+    
+    div.innerHTML = `
+      <img src="https://i.imgur.com/0D0DKGI.png" class="w-8 h-8 rounded-full object-contain bg-white/10 p-1 flex-shrink-0 border border-white/10 mt-1" alt="AI">
+      <div class="flex-1 min-w-0">
+        <div class="image-skeleton">
+          <div class="skeleton-loading"></div>
+          <div class="relative z-10 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-500 mx-auto mb-2 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            <p class="text-sm text-gray-400 font-medium">Görseliniz Hazırlanılıyor...</p>
+          </div>
+        </div>
+      </div>
+    `;
+    messagesDiv.appendChild(div);
+    scrollToBottom();
+  }
+
+  // 🌟 ANAHTAR KELİME İLE GÖRSEL TESPİTİ
+  function isImageRequest(message) {
+    const lower = message.toLowerCase();
+    const keywords = ['görsel', 'resim', 'fotoğraf', 'çiz', 'image', 'draw', 'picture', 'görseli oluştur', 'resim oluştur', 'görsel oluştur'];
+    return keywords.some(kw => lower.includes(kw));
   }
 
   window.confirmAgentTask = async (clickedBtn, approved, cost) => {
@@ -757,17 +951,50 @@
     appendMessage('user', message);
     renderChatList();
 
+    // 🌟 GÖRSEL OLUŞTURMA TESPİTİ
+    if (isImageRequest(message)) {
+      createImageSkeleton();
+      try {
+        const imgResponse = await fetch('/api/generate-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: message })
+        });
+
+        const imgResult = await imgResponse.json();
+        
+        // Skeleton'ı kaldır
+        const skeletonEl = document.getElementById('img-skeleton-temp');
+        if (skeletonEl) skeletonEl.remove();
+
+        if (imgResult.success && imgResult.imageUrl) {
+          appendImageMessage(imgResult.imageUrl);
+          chats[currentChatId].messages.push({ 
+            type: 'image', 
+            content: imgResult.imageUrl 
+          });
+        } else {
+          appendMessage('assistant', `❌ Görsel oluşturulamadı: ${imgResult.error || 'Bilinmeyen hata'}`);
+        }
+      } catch (err) {
+        const skeletonEl = document.getElementById('img-skeleton-temp');
+        if (skeletonEl) skeletonEl.remove();
+        appendMessage('assistant', '❌ Görsel üretimi sırasında sunucu hatası oluştu.');
+      } finally {
+        isGenerating = false;
+        document.getElementById('sendBtn').disabled = false;
+        await saveChatToFirestore(currentChatId);
+        input.focus();
+      }
+      return; // Normal chat akışını durdur
+    }
+
+    // 🌟 NORMAL SOHBET AKIŞI (YEŞİL IŞIKLI THINKING)
     const assistantDiv = appendMessage('assistant', '', true);
     const contentDiv = assistantDiv.querySelector('.prose');
     
-    contentDiv.innerHTML = `
-      <div class="flex items-center gap-2">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-        </svg>
-        <span class="shimmer">Düşünüyorum...</span>
-      </div>
-    `;
+    // Sadece yeşil ışık geçen shimmer (İkon ve "Düşünüyorum" yazısı yok)
+    contentDiv.innerHTML = `<div class="shimmer-green">● ● ●</div>`;
 
     try {
       const response = await fetch('/api/chat', {
