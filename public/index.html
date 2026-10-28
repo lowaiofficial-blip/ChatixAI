@@ -12,19 +12,26 @@
     * { margin:0; padding:0; box-sizing:border-box; }
     html,body { height:100%; height:100dvh; width:100%; overflow:hidden; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; }
     body { display:flex; background:#212121; color:#f3f4f6; }
+    
     #sidebar { width:280px; background:#171717; border-right:1px solid rgba(255,255,255,.05); display:flex; flex-direction:column; height:100%; position:fixed; left:0; top:0; z-index:40; transform:translateX(-100%); transition:transform .3s; }
     @media(min-width:768px){ #sidebar{ position:relative; transform:translateX(0); } }
     #sidebar.open { transform:translateX(0); }
+    
     main { flex:1; display:flex; flex-direction:column; height:100%; min-width:0; }
     header { flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:.75rem 1rem; border-bottom:1px solid rgba(255,255,255,.05); background:rgba(33,33,33,.95); backdrop-filter:blur(12px); position:relative; z-index:20; }
+    
     #chatContainer { flex:1; overflow-y:auto; overflow-x:hidden; width:100%; }
     .input-area { flex-shrink:0; padding:.75rem 1rem; background:#212121; }
+    
     #backdrop { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:30; display:none; }
     #backdrop.show { display:block; }
     @media(min-width:768px){ #backdrop{ display:none !important; } }
+    
     #profileDropdown { position:absolute; right:0; top:100%; margin-top:.5rem; width:16rem; background:#2f2f2f; border:1px solid rgba(255,255,255,.1); border-radius:.75rem; z-index:100; overflow:hidden; }
+    
     .scrollbar-thin::-webkit-scrollbar { width:6px; }
     .scrollbar-thin::-webkit-scrollbar-thumb { background:#444; border-radius:3px; }
+    
     .prose pre { background:#0d1117 !important; padding:1rem; border-radius:.5rem; overflow-x:auto; margin:.75rem 0; }
     .prose code { font-family:'Fira Code',monospace; font-size:.875em; background:rgba(255,255,255,.06); padding:.125rem .375rem; border-radius:.25rem; }
     .prose pre code { background:transparent; padding:0; }
@@ -52,10 +59,13 @@
 
     .fade-in { animation:fadeIn .35s ease-out; }
     @keyframes fadeIn { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
+    
     .spinner { width:18px; height:18px; border:2px solid rgba(255,255,255,.25); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; display:inline-block; flex-shrink:0; }
     @keyframes spin { to{transform:rotate(360deg);} }
+    
     .message-bubble { transition:background .2s; }
     .message-bubble:hover { background:rgba(255,255,255,.02); }
+    
     .input-container { transition:box-shadow .25s,border-color .25s; }
     .input-container:focus-within { box-shadow:0 0 0 2px rgba(16,163,127,.2); border-color:rgba(16,163,127,.5); }
 
@@ -84,7 +94,7 @@
 </head>
 <body>
 
-<!-- GİRİŞ -->
+<!-- GİRİŞ EKRANI -->
 <div id="loginScreen" class="fixed inset-0 z-50 bg-[#212121] flex items-center justify-center p-4">
   <div class="w-full max-w-sm">
     <div class="text-center mb-8">
@@ -107,7 +117,7 @@
   </div>
 </div>
 
-<!-- UYGULAMA -->
+<!-- ANA UYGULAMA -->
 <div id="appScreen" class="hidden w-full h-full">
   <div id="backdrop" onclick="toggleSidebar()"></div>
 
@@ -158,6 +168,7 @@
     </header>
 
     <div id="chatContainer" class="scrollbar-thin">
+      <!-- KARŞILAMA EKRANI -->
       <div id="welcome" class="h-full flex flex-col items-center justify-center text-center px-4">
         <img src="https://i.imgur.com/0D0DKGI.png" class="h-20 w-20 object-contain mb-6" alt="Logo">
         <h2 class="text-2xl sm:text-3xl font-semibold mb-2">ChatixAI'ye Hoş Geldin</h2>
@@ -177,6 +188,8 @@
           </button>
         </div>
       </div>
+      
+      <!-- SOHBET MESAJLARI ALANI -->
       <div id="messages" class="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-4 hidden"></div>
     </div>
 
@@ -233,7 +246,7 @@
           </div>
         </div>
 
-        <!-- INPUT -->
+        <!-- INPUT ALANI -->
         <div class="input-container relative bg-[#2f2f2f] rounded-2xl border border-white/10 shadow-lg">
           <textarea id="userInput" rows="1" placeholder="ChatixAI'ye bir şey sor veya görsel oluşturmasını iste..."
             class="w-full bg-transparent px-4 py-3 sm:py-4 pr-14 resize-none focus:outline-none max-h-32 text-sm sm:text-base"
@@ -248,7 +261,7 @@
   </main>
 </div>
 
-<!-- GÖRSEL ÖNİZLEME -->
+<!-- GÖRSEL ÖNİZLEME (LIGHTBOX) -->
 <div id="imageLightbox" onclick="closeLightbox(event)">
   <div onclick="event.stopPropagation()">
     <img id="lightboxImg" class="max-w-[90vw] max-h-[75vh] object-contain rounded-lg" alt="Önizleme">
@@ -425,15 +438,18 @@
     } catch (e) { console.warn('Sohbet yükleme:', e.message); }
     renderChatList();
   }
+  
   async function saveChat() {
     if (!currentUser || !currentChatId || !chats[currentChatId]) return;
     try { await setDoc(doc(db, 'users', currentUser.uid, 'chats', currentChatId), chats[currentChatId]); }
     catch (e) { console.warn('Kaydetme:', e.message); }
   }
+  
   window.toggleSidebar = () => {
     $('sidebar').classList.toggle('open');
     $('backdrop').classList.toggle('show');
   };
+  
   window.newChat = () => {
     currentChatId = null; isGenerating = false;
     $('welcome').classList.remove('hidden');
@@ -443,6 +459,7 @@
     $('sendBtn').disabled = false;
     renderChatList();
   };
+  
   window.renderChatList = () => {
     $('chatList').innerHTML = '';
     const ids = Object.keys(chats);
@@ -470,16 +487,19 @@
       $('chatList').appendChild(div);
     });
   };
+  
   window.loadChat = id => {
     currentChatId = id;
+    // KRİTİK: Sohbet ekranını aç, karşılama ekranını kapat
     $('welcome').classList.add('hidden');
     $('messages').classList.remove('hidden');
     $('messages').innerHTML = '';
     (chats[id]?.messages || []).forEach(m => {
       if (m.type === 'image') {
-        if (m.content && m.content.startsWith('data:')) appendImageMessage(m.content);
-        else appendMessage('assistant', '🎨 Görsel bu oturumda oluşturuldu.');
-      } else appendMessage(m.role, m.content);
+        appendMessage('assistant', '🎨 Görsel bu oturumda oluşturuldu. (Önizleme için sohbeti yeniden başlatın)');
+      } else {
+        appendMessage(m.role, m.content);
+      }
     });
     renderChatList();
     scrollBottom();
@@ -491,6 +511,7 @@
     d.textContent = text || '';
     return d.innerHTML;
   }
+  
   function appendMessage(role, content) {
     const div = document.createElement('div');
     div.className = 'message-bubble flex gap-3 p-3 rounded-xl fade-in';
@@ -504,29 +525,7 @@
     scrollBottom();
     return div;
   }
-  function appendImageMessage(src) {
-    const div = document.createElement('div');
-    div.className = 'flex gap-3 p-3 rounded-xl fade-in';
-    const box = document.createElement('div');
-    box.className = 'image-skeleton cursor-pointer';
-    box.style.cssText = 'border:none;background:none;padding:0;';
-    const img = document.createElement('img');
-    img.src = src;
-    img.alt = 'Oluşturulan görsel';
-    img.className = 'w-full h-full object-cover rounded-xl';
-    box.appendChild(img);
-    box.onclick = () => openLightbox(src);
 
-    const left = document.createElement('img');
-    left.src = 'https://i.imgur.com/0D0DKGI.png';
-    left.className = 'w-8 h-8 rounded-full object-contain bg-white/10 p-1 flex-shrink-0 mt-1';
-    const right = document.createElement('div');
-    right.className = 'flex-1 min-w-0';
-    right.appendChild(box);
-    div.append(left, right);
-    $('messages').appendChild(div);
-    scrollBottom();
-  }
   function createImageSkeleton() {
     const old = $('img-skeleton-temp');
     if (old) old.remove();
@@ -556,7 +555,7 @@
            /(oluştur|yap|çiz|getir|yarat|create|generate)/.test(m);
   }
 
-  /* ---------- METİN SOHBET (Non-stream) ---------- */
+  /* ---------- METİN SOHBET ---------- */
   window.sendMessage = async () => {
     const input = $('userInput');
     const message = input.value.trim();
@@ -566,6 +565,8 @@
     $('sendBtn').disabled = true;
     input.value = '';
     autoResize(input);
+    
+    // KRİTİK: Mesaj gönderilince karşılama ekranını kapat, sohbet ekranını aç
     $('welcome').classList.add('hidden');
     $('messages').classList.remove('hidden');
 
@@ -595,8 +596,29 @@
         $('img-skeleton-temp')?.remove();
 
         if (data.success && data.imageUrl) {
-          appendImageMessage(data.imageUrl);
-          // Firestore 1MB limitini aşmamak için base64 kaydetmiyoruz
+          // Görseli ekrana bas
+          const div = document.createElement('div');
+          div.className = 'flex gap-3 p-3 rounded-xl fade-in';
+          const box = document.createElement('div');
+          box.className = 'image-skeleton cursor-pointer';
+          box.style.cssText = 'border:none;background:none;padding:0;';
+          const img = document.createElement('img');
+          img.src = data.imageUrl;
+          img.alt = 'Oluşturulan görsel';
+          img.className = 'w-full h-full object-cover rounded-xl';
+          box.appendChild(img);
+          box.onclick = () => openLightbox(data.imageUrl);
+
+          const left = document.createElement('img');
+          left.src = 'https://i.imgur.com/0D0DKGI.png';
+          left.className = 'w-8 h-8 rounded-full object-contain bg-white/10 p-1 flex-shrink-0 mt-1';
+          const right = document.createElement('div');
+          right.className = 'flex-1 min-w-0';
+          right.appendChild(box);
+          div.append(left, right);
+          $('messages').appendChild(div);
+          scrollBottom();
+
           chats[currentChatId].messages.push({ type: 'image', content: message });
         } else {
           appendMessage('assistant', '❌ Görsel oluşturulamadı: ' + (data.error || 'Bilinmeyen hata'));
@@ -613,7 +635,7 @@
       return;
     }
 
-    /* NORMAL MOD */
+    /* NORMAL METİN MODU */
     const holder = document.createElement('div');
     holder.className = 'flex gap-3 p-3 rounded-xl fade-in';
     holder.innerHTML = `
