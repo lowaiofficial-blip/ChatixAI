@@ -16,12 +16,74 @@ if (process.env.FIREBASE_SERVICE_ACCOUNT) {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 🌟 MODEL HARİTALAMA (Frontend İsmi -> OpenRouter Gerçek Modeli)
+// 🌟 MODEL HARİTALAMA (Flash Lite Eklendi)
 const MODEL_MAP = {
   'Chatix-Lite': 'dots-studio/dots-3-note-preview:free',
   'Chatix-Spark': 'cohere/north-mini-code:free',
-  'Chatix-Core': 'nvidia/nemotron-3.5-super-vl:free'
+  'Chatix-Core': 'nvidia/nemotron-3.5-super-vl:free',
+  'Flash Lite': 'gemini-3.5-flash-lite' // 🚀 Yeni Model Eklendi
 };
+
+// 🌟 GÖRSEL OLUŞTURMA ENDPOINT'İ
+app.post('/api/generate-image', async (req, res) => {
+  const { prompt } = req.body;
+
+  if (!process.env.OPENROUTER_API_KEY) {
+    return res.status(500).json({ error: 'API anahtarı yapılandırılmamış' });
+  }
+
+  try {
+    // OpenRouter üzerinden Görsel Üretim Modelleri (Nano Banana / Gemini Image)
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.SITE_URL || 'http://localhost:3000',
+        'X-Title': 'ChatixAI'
+      },
+      body: JSON.stringify({
+        model: 'gemini-3.1-flash-lite-image', // 🎨 İstediğin Görsel Modeli
+        messages: [
+          { role: 'user', content: prompt }
+        ],
+        modalities: ["image", "text"] // OpenRouter'da görsel üretmek için zorunlu
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      return res.status(response.status).json({ error: `Görsel API Hatası: ${error}` });
+    }
+
+    const data = await response.json();
+    
+    // OpenRouter görsel sonuçlarını genellikle base64 veya url olarak döner
+    const message = data.choices[0]?.message;
+    let imageUrl = null;
+
+    if (message && message.images && message.images.length > 0) {
+      const imageObj = message.images[0];
+      if (imageObj.image_url?.url) {
+        imageUrl = imageObj.image_url.url; // Base64 veya Direkt URL
+      }
+    } else if (message && message.content && message.content.includes('data:image')) {
+      // Bazı modeller direkt markdown içinde base64 döner
+      const match = message.content.match(/!\[.*?\]\((.*?)\)/);
+      if (match && match[1]) imageUrl = match[1];
+    }
+
+    if (!imageUrl) {
+      return res.status(404).json({ error: 'Görsel oluşturulamadı veya format desteklenmiyor.' });
+    }
+
+    res.json({ success: true, imageUrl: imageUrl });
+
+  } catch (error) {
+    console.error('Görsel Üretim Hatası:', error);
+    res.status(500).json({ error: 'Görsel oluşturulurken sunucu hatası' });
+  }
+});
 
 // 1. WEB ARAMA ENDPOINT'İ
 app.post('/api/web-search', async (req, res) => {
@@ -98,7 +160,7 @@ app.get('/api/check-task-status', async (req, res) => {
   }
 });
 
-// 4. CHAT API (Model Seçimi Destekli)
+// 4. CHAT API
 app.post('/api/chat', async (req, res) => {
   const { messages, userTokens, selectedModelName } = req.body;
 
@@ -106,20 +168,19 @@ app.post('/api/chat', async (req, res) => {
     return res.status(500).json({ error: 'API anahtarı yapılandırılmamış' });
   }
 
-  // Frontend'den gelen ismi gerçek modele çevir, yoksa varsayılanı (Lite) kullan
   const actualModel = MODEL_MAP[selectedModelName] || MODEL_MAP['Chatix-Lite'];
 
   const systemPrompt = {
     role: "system",
     content: `KRİTİK KİMLİK KURALI: Senin adın 'ChatixAI' dir. Sen OpenAI, ChatGPT, Claude veya genel bir 'yapay zeka dil modeli' DEĞİLSİN. Türkçe konuş, kısa, net, samimi ve yardımcı ol.
 
-WEB OTOMASYONU VE AKILLI TOKEN KURALI (ÇOK ÖNEMLİ):
-Eğer kullanıcı senden bir web sitesine gidip işlem yapmasını isterse (form doldur, kayıt ol, tıkla, mesaj at, satın al vs.):
+WEB OTOMASYONU VE AKILLI TOKEN KURALI:
+Eğer kullanıcı senden bir web sitesine gidip işlem yapmasını isterse:
 1. Asla doğrudan "yapıyorum" deme.
 2. İŞLEMİN AĞIRLIĞINA GÖRE TOKEN MALİYETİ BELİRLE:
-   - BASİT İŞLEM (5 token): Sadece siteyi okuma, fiyat bulma, bilgi çekme
-   - ORTA İŞLEM (20 token): Butona tıklama, form doldurma, arama yapma
-   - ZOR İŞLEM (50 token): Kayıt olma, giriş yapma, mesaj atma, satın alma, CAPTCHA çözme
+   - BASİT (5 token): Siteyi okuma, bilgi çekme
+   - ORTA (20 token): Butona tıklama, form doldurma
+   - ZOR (50 token): Kayıt olma, mesaj atma, CAPTCHA
 3. Tam olarak şu formatta yanıt ver:
 [TOKEN_REQUEST:X]
 🪙 Hesabınızda şu an ${userTokens || 0} token var. Bu işlem yaklaşık X token tüketecek. Kabul ediyor musunuz?`
@@ -135,7 +196,7 @@ Eğer kullanıcı senden bir web sitesine gidip işlem yapmasını isterse (form
         'X-Title': 'ChatixAI'
       },
       body: JSON.stringify({
-        model: actualModel, // 🌟 Dinamik model kullanımı
+        model: actualModel,
         messages: [systemPrompt, ...messages],
         stream: true
       })
